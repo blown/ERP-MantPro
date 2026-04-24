@@ -17,6 +17,35 @@ export interface Employee {
   guardias: { fecha: string; horasNormales: number; horasFestivas: number }[];
 }
 
+export interface GuardiaWeek {
+  id?: number;
+  anio: number;
+  semana: number;
+  fechaInicio: string;
+  operarioNombre: string;
+  operarioId?: number;
+}
+
+export interface VacationEntry {
+  id?: number;
+  operarioNombre: string;
+  anio: number;
+  tipo: 'V' | 'C' | 'F' | 'PER' | 'REC' | string;
+  fecha: string; // YYYY-MM-DD
+}
+
+export interface VacationBalance {
+  id?: number;
+  operarioNombre: string;
+  anio: number;
+  vacacionesSolicitadas: number;
+  vacacionesRestantes: number;
+  compensatoriosSolicitados: number;
+  compensatoriosRestantes: number;
+  diasXHoras: number;
+  festivosEnVacaciones: number;
+}
+
 export interface Supplier {
   id?: number;
   nombre: string;
@@ -105,6 +134,11 @@ export interface Settings {
   fechaNotificacionProrrateo?: string;
   clothingLink?: string;
   fechaNotificacionRopa?: string;
+  fechaNotificacionGuardia?: string;
+  guardiaLink?: string;
+  vacationLink?: string;
+  incendiosLink?: string;
+  fechaNotificacionIncendios?: string;
 }
 
 export interface ClothingItem {
@@ -284,6 +318,9 @@ export class MantProDB extends Dexie {
   regulatoryInspections!: Table<RegulatoryInspection>;
   inspectorCompanies!: Table<InspectorCompany>;
   prorrateo!: Table<ProrrateoItem>;
+  guardiaWeeks!: Table<GuardiaWeek>;
+  vacationEntries!: Table<VacationEntry>;
+  vacationBalances!: Table<VacationBalance>;
 
   constructor() {
     super('MantProDB');
@@ -319,6 +356,13 @@ export class MantProDB extends Dexie {
     });
     this.version(6).stores({
       prorrateo: '++id, anio, servicio, empresa'
+    });
+    this.version(9).stores({
+      guardiaWeeks: '++id, [anio+semana], anio, semana, operarioNombre, fechaInicio'
+    });
+    this.version(12).stores({
+      vacationEntries: '++id, operarioNombre, anio, fecha',
+      vacationBalances: '++id, operarioNombre, anio'
     });
   }
 }

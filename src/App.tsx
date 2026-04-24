@@ -14,7 +14,9 @@ import {
   FileSpreadsheet,
   Shirt,
   Wrench,
-  ShieldCheck
+  ShieldCheck,
+  Flame,
+  X
 } from 'lucide-react';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -175,15 +177,53 @@ function DashboardView({ onImport, onShowSummary, onNavigate }: {
   const todayStr = new Date().toISOString().split('T')[0];
   const isProrrateoPending = settings?.fechaNotificacionProrrateo ? todayStr >= settings.fechaNotificacionProrrateo : false;
   const isRopaPending = settings?.fechaNotificacionRopa ? todayStr >= settings.fechaNotificacionRopa : false;
+  const isGuardiaPending = settings?.fechaNotificacionGuardia ? todayStr >= settings.fechaNotificacionGuardia : false;
+  const isIncendiosPending = settings?.fechaNotificacionIncendios ? todayStr >= settings.fechaNotificacionIncendios : false;
+
+  // Get current ISO week
+  const today = new Date();
+  const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const currentYear = d.getUTCFullYear();
+
+  const currentGuard = useLiveQuery(() => 
+    db.guardiaWeeks.where('[anio+semana]').equals([currentYear, weekNo]).first()
+  );
+
+  const nextGuards = useLiveQuery(async () => {
+    const guards = [];
+    for (let i = 1; i <= 3; i++) {
+      let w = weekNo + i;
+      let y = currentYear;
+      if (w > 52) { w = 1; y++; }
+      const g = await db.guardiaWeeks.where('[anio+semana]').equals([y, w]).first();
+      if (g) guards.push(g);
+    }
+    return guards;
+  }) || [];
+
+  const nextAbsences = useLiveQuery(async () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    return await db.vacationEntries
+      .where('fecha').between(todayStr, nextWeek, true, true)
+      .and(e => e.tipo === 'V' || e.tipo === 'C')
+      .toArray();
+  }) || [];
 
   return (
     <>
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-        <div className="card" onClick={() => onNavigate('personal')} style={{ cursor: 'pointer' }}>
+        <div className="card" onClick={() => onNavigate('personal')} style={{ cursor: 'pointer', border: !currentGuard ? '1px dashed var(--warning)' : '1px solid var(--border)' }}>
           <div className="card-title">Personal de Guardia</div>
-          <div className="card-value">{employeeCount}/9</div>
+          <div className="card-value" style={{ fontSize: currentGuard ? '1.5rem' : '2rem' }}>
+            {currentGuard ? currentGuard.operarioNombre : 'Sin Cargar'}
+          </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <FileSpreadsheet size={14} /> {employeeCount === 0 ? 'Importar operarios' : 'Gestionar personal'}
+            {currentGuard ? `Semana ${weekNo} (${currentGuard.fechaInicio})` : 'Importa el Excel en Personal'}
           </div>
         </div>
         <div className="card">
@@ -206,13 +246,13 @@ function DashboardView({ onImport, onShowSummary, onNavigate }: {
           <div className="card-value" style={{ color: fleetAlerts > 0 ? 'var(--error)' : 'inherit' }}>{fleetAlerts}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Flota &lt; 15 días</div>
         </div>
-        <div className="card" onClick={() => onNavigate('tareas_anuales')} style={{ cursor: 'pointer', background: (isProrrateoPending || isRopaPending) ? '#fee2e2' : 'var(--card-bg)', color: (isProrrateoPending || isRopaPending) ? '#991b1b' : 'inherit', border: (isProrrateoPending || isRopaPending) ? '2px solid #ef4444' : '1px solid var(--border)' }}>
-          <div className="card-title" style={{ color: (isProrrateoPending || isRopaPending) ? '#991b1b' : 'var(--text-muted)' }}>Tareas Anuales</div>
-          <div className="card-value" style={{ color: (isProrrateoPending || isRopaPending) ? '#ef4444' : 'inherit' }}>
-            {(isProrrateoPending ? 1 : 0) + (isRopaPending ? 1 : 0)}/2
+        <div className="card" onClick={() => onNavigate('tareas_anuales')} style={{ cursor: 'pointer', background: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#fee2e2' : 'var(--card-bg)', color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#991b1b' : 'inherit', border: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '2px solid #ef4444' : '1px solid var(--border)' }}>
+          <div className="card-title" style={{ color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#991b1b' : 'var(--text-muted)' }}>Tareas Anuales</div>
+          <div className="card-value" style={{ color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#ef4444' : 'inherit' }}>
+            {(isProrrateoPending ? 1 : 0) + (isRopaPending ? 1 : 0) + (isGuardiaPending ? 1 : 0) + (isIncendiosPending ? 1 : 0)}/4
           </div>
-          <div style={{ fontSize: '0.75rem', color: (isProrrateoPending || isRopaPending) ? '#b91c1c' : 'var(--text-muted)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 600 }}>Prorrateo | Vestuario</span>
+          <div style={{ fontSize: '0.75rem', color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#b91c1c' : 'var(--text-muted)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+            <span style={{ fontWeight: 600 }}>Prorrateo | Ropa | Guardia | Incendios</span>
           </div>
         </div>
       </div>
@@ -273,19 +313,46 @@ function DashboardView({ onImport, onShowSummary, onNavigate }: {
 
         <div className="card">
           <h2>Disponibilidad Personal</h2>
-          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {[1,2,3].map(i => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i}</div>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>Oficial {i}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>De Guardia</div>
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Guardias */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Próximas Guardias</div>
+              {nextGuards.length > 0 ? nextGuards.map((g, idx) => (
+                <div key={`g-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '8px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                      {g.operarioNombre[0]}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.operarioNombre}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Semana {g.semana} ({g.fechaInicio})</div>
+                    </div>
                   </div>
                 </div>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }}></div>
-              </div>
-            ))}
+              )) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No hay próximas guardias</div>
+              )}
+            </div>
+
+            {/* Vacaciones / Compensatorios */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Vacaciones / Comp. (7 días)</div>
+              {nextAbsences.length > 0 ? nextAbsences.map((a, idx) => (
+                <div key={`a-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '8px', background: a.tipo === 'V' ? 'var(--success)' : 'var(--warning)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                      {a.tipo}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{a.operarioNombre}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{a.fecha}</div>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nadie de vacaciones próximamente</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
