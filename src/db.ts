@@ -54,24 +54,45 @@ export interface Supplier {
   comercial: string;
 }
 
+export interface Quotation {
+  id?: number;
+  idProveedor: number;
+  fechaSolicitud: string;
+  fechaRecepcion?: string;
+  estado: 'solicitado' | 'recibido' | 'aceptado' | 'rechazado';
+  importeTotal: number;
+  documentoUrl?: string;
+  observaciones?: string;
+}
+
 export interface Order {
   id?: number;
+  idPresupuesto?: number;
   numeroPedido: number;
   anio: number;
   idProveedor: number;
+  fechaPedido: string;
+  fechaEntregaEstimada?: string;
+  estado: 'pendiente' | 'recibido' | 'abono_pendiente' | 'abonado';
+  numeroAlbaran?: string;
+  fechaAlbaran?: string;
+  observaciones?: string;
+}
+
+export interface OrderItem {
+  id?: number;
+  idPedido: number;
   idEdificio: number;
-  idInstalacion: string; // e.g., 'alumbrado', 'climatizacion'
+  idInstalacion: string;
+  idEquipo?: string; // Vinculo opcional a inventario técnico
+  idObra?: number;   // Vinculo opcional a obra
   descripcion: string;
   unidades: number;
   precioPVP: number;
   descuento: number;
   precioNeto: number;
-  fechaPedido: string;
-  estado: 'pendiente' | 'recibido' | 'abono_pendiente' | 'abonado';
-  esObra: boolean; // Manual override or auto-calc
-  numeroAlbaran?: string;
-  fechaAlbaran?: string;
-  incidencias?: string;
+  estado: 'pendiente' | 'recibido' | 'devuelto';
+  observacionesDevolucion?: string;
 }
 
 export interface Project {
@@ -175,6 +196,15 @@ export interface InventoryItem {
   updatedAt: string;
 }
 
+export interface UsedSparePart {
+  orderId: number;
+  numeroPedido: string;
+  descripcion: string;
+  fechaInstalacion: string;
+  unidades: number;
+  proveedorNombre: string;
+}
+
 export interface MaintenanceBook {
   id?: number;
   idEquipo: string;
@@ -196,13 +226,18 @@ export interface MaintenanceBook {
     fabricante: string;
     modelo: string;
     numeroSerie: string;
+    funcion?: string; // Función en la instalación
     caracteristicasTecnicas: string;
     planMantenimiento: string;
+    fotos: string[]; // URLs or Base64
+    manuales: { nombre: string; url: string }[];
+    hojasTecnicas: { nombre: string; url: string }[];
     registrosPreventivos: any[];
     incidencias: any[];
     averias: any[];
     mediciones: any[];
     actuacionesCorrectivas: any[];
+    repuestos: UsedSparePart[];
     modificaciones: any[];
     anexos: any[];
     historialDocumental: any[];
@@ -299,7 +334,9 @@ export interface ProrrateoItem {
 export class MantProDB extends Dexie {
   employees!: Table<Employee>;
   suppliers!: Table<Supplier>;
+  quotations!: Table<Quotation>;
   orders!: Table<Order>;
+  orderItems!: Table<OrderItem>;
   projects!: Table<Project>;
   assets!: Table<Asset>;
   buildings!: Table<Building>;
@@ -363,6 +400,11 @@ export class MantProDB extends Dexie {
     this.version(12).stores({
       vacationEntries: '++id, operarioNombre, anio, fecha',
       vacationBalances: '++id, operarioNombre, anio'
+    });
+    this.version(13).stores({
+      quotations: '++id, idProveedor, estado',
+      orders: '++id, numeroPedido, idProveedor, estado',
+      orderItems: '++id, idPedido, idEdificio, idObra'
     });
   }
 }

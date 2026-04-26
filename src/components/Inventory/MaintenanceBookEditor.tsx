@@ -10,7 +10,16 @@ import {
   History, 
   Plus, 
   FileText,
-  Info
+  Info,
+  Package,
+  ShoppingCart,
+  Trash2,
+  Image as ImageIcon,
+  File as FileIcon,
+  Printer,
+  BookOpen,
+  Settings,
+  ClipboardList
 } from 'lucide-react';
 
 interface Props {
@@ -18,10 +27,151 @@ interface Props {
   onClose: () => void;
 }
 
+// --- Sub-componente para la gestión de Repuestos ---
+function RepuestosView({ book, onUpdate }: { book: MaintenanceBook, onUpdate: (b: MaintenanceBook) => void }) {
+  const [showPicker, setShowPicker] = useState(false);
+  const orders = useLiveQuery(() => db.orders.where('estado').equals('recibido').toArray()) || [];
+  const suppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+
+  const handleAddSpare = (item: any) => {
+    const order = orders.find(o => o.id === item.idPedido);
+    const supplier = suppliers.find(s => s.id === order?.idProveedor);
+    const newSpare = {
+      orderId: item.idPedido,
+      numeroPedido: order ? `${order.numeroPedido}/${order.anio}` : '?',
+      descripcion: item.descripcion,
+      fechaInstalacion: new Date().toISOString().split('T')[0],
+      unidades: item.unidades,
+      proveedorNombre: supplier?.nombre || 'Desconocido'
+    };
+
+    const updatedBook = {
+      ...book,
+      manualData: {
+        ...book.manualData,
+        repuestos: [...(book.manualData.repuestos || []), newSpare]
+      }
+    };
+    onUpdate(updatedBook);
+    setShowPicker(false);
+  };
+
+  const removeSpare = (index: number) => {
+    const newRepuestos = [...book.manualData.repuestos];
+    newRepuestos.splice(index, 1);
+    onUpdate({
+      ...book,
+      manualData: {
+        ...book.manualData,
+        repuestos: newRepuestos
+      }
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }}>Histórico de Repuestos Instalados</h3>
+        <button className="btn btn-primary" onClick={() => setShowPicker(true)}>
+          <Plus size={16} /> Vincular Repuesto de Compra
+        </button>
+      </div>
+
+      <div className="table-container" style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'var(--bg)', fontSize: '0.8rem' }}>
+            <tr>
+              <th style={{ padding: '0.8rem', textAlign: 'left' }}>FECHA INST.</th>
+              <th style={{ padding: '0.8rem', textAlign: 'left' }}>PEDIDO</th>
+              <th style={{ padding: '0.8rem', textAlign: 'left' }}>DESCRIPCIÓN</th>
+              <th style={{ padding: '0.8rem', textAlign: 'left' }}>PROVEEDOR</th>
+              <th style={{ padding: '0.8rem', textAlign: 'center' }}>UDS</th>
+              <th style={{ padding: '0.8rem', textAlign: 'right' }}>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            {book.manualData.repuestos?.map((spare, idx) => (
+              <tr key={idx} style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                <td style={{ padding: '0.8rem' }}>{spare.fechaInstalacion}</td>
+                <td style={{ padding: '0.8rem', fontWeight: 600 }}>#{spare.numeroPedido}</td>
+                <td style={{ padding: '0.8rem' }}>{spare.descripcion}</td>
+                <td style={{ padding: '0.8rem' }}>{spare.proveedorNombre}</td>
+                <td style={{ padding: '0.8rem', textAlign: 'center' }}>{spare.unidades}</td>
+                <td style={{ padding: '0.8rem', textAlign: 'right' }}>
+                  <button className="btn text-error" onClick={() => removeSpare(idx)} title="Eliminar vínculo">
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {(!book.manualData.repuestos || book.manualData.repuestos.length === 0) && (
+              <tr>
+                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No hay repuestos vinculados a este equipo todavía.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showPicker && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal" style={{ maxWidth: '800px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h3>Seleccionar Repuesto Recibido</h3>
+              <button className="btn" onClick={() => setShowPicker(false)}><X size={24} /></button>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+              Solo se muestran líneas de pedidos con estado <strong>RECIBIDO</strong>.
+            </p>
+
+            <div className="table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: 'var(--bg)', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ padding: '0.8rem', textAlign: 'left' }}>Pedido</th>
+                    <th style={{ padding: '0.8rem', textAlign: 'left' }}>Descripción</th>
+                    <th style={{ padding: '0.8rem', textAlign: 'left' }}>Albarán</th>
+                    <th style={{ padding: '0.8rem', textAlign: 'right' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {useLiveQuery(() => db.orderItems.where('estado').equals('recibido').toArray())?.map(line => {
+                    const order = orders.find(o => o.id === line.idPedido);
+                    return (
+                      <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.8rem' }}>#{order?.numeroPedido}/{order?.anio}</td>
+                        <td style={{ padding: '0.8rem' }}>{line.descripcion}</td>
+                        <td style={{ padding: '0.8rem' }}>{order?.numeroAlbaran || '-'}</td>
+                        <td style={{ padding: '0.8rem', textAlign: 'right' }}>
+                          <button className="btn btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }} onClick={() => handleAddSpare(line)}>
+                            Vincular
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {orders.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }}>No hay pedidos recibidos disponibles.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MaintenanceBookEditor({ item, onClose }: Props) {
   const [book, setBook] = useState<MaintenanceBook | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'info' | 'technical' | 'plan' | 'logs'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'technical' | 'docs' | 'plan' | 'repuestos' | 'logs'>('info');
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Fetch or create book
@@ -49,13 +199,18 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
             fabricante: '',
             modelo: '',
             numeroSerie: '',
+            funcion: '',
             caracteristicasTecnicas: '',
             planMantenimiento: '',
+            fotos: [],
+            manuales: [],
+            hojasTecnicas: [],
             registrosPreventivos: [],
             incidencias: [],
             averias: [],
             mediciones: [],
             actuacionesCorrectivas: [],
+            repuestos: [],
             modificaciones: [],
             anexos: [],
             historialDocumental: []
@@ -153,9 +308,11 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
 
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
           {[
-            { id: 'info', label: 'Info General (Bloque A)', icon: Info },
-            { id: 'technical', label: 'Datos Técnicos (Bloque B)', icon: Settings },
+            { id: 'info', label: 'Info General', icon: Info },
+            { id: 'technical', label: 'Datos Técnicos', icon: Settings },
+            { id: 'docs', label: 'Fotos & Manuales', icon: ImageIcon },
             { id: 'plan', label: 'Plan & Tareas', icon: ClipboardList },
+            { id: 'repuestos', label: 'Repuestos Usados', icon: Package },
             { id: 'logs', label: 'Historial', icon: History }
           ].map(tab => (
             <button 
@@ -216,41 +373,89 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
 
           {activeTab === 'technical' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label>Fabricante</label>
-                    <input 
-                      className="form-control" 
-                      value={book?.manualData.fabricante} 
-                      onChange={e => setBook({...book!, manualData: {...book!.manualData, fabricante: e.target.value}})} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Modelo</label>
-                    <input 
-                      className="form-control" 
-                      value={book?.manualData.modelo} 
-                      onChange={e => setBook({...book!, manualData: {...book!.manualData, modelo: e.target.value}})} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Número de Serie</label>
-                    <input 
-                      className="form-control" 
-                      value={book?.manualData.numeroSerie} 
-                      onChange={e => setBook({...book!, manualData: {...book!.manualData, numeroSerie: e.target.value}})} 
-                    />
-                  </div>
-               </div>
-               <div className="form-group">
-                  <label>Características Técnicas (Bloque B - No sobreescribible)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Fabricante</label>
+                  <input 
+                    className="form-control" 
+                    value={book?.manualData.fabricante} 
+                    onChange={e => setBook({...book!, manualData: {...book!.manualData, fabricante: e.target.value}})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Modelo</label>
+                  <input 
+                    className="form-control" 
+                    value={book?.manualData.modelo} 
+                    onChange={e => setBook({...book!, manualData: {...book!.manualData, modelo: e.target.value}})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Número de Serie</label>
+                  <input 
+                    className="form-control" 
+                    value={book?.manualData.numeroSerie} 
+                    onChange={e => setBook({...book!, manualData: {...book!.manualData, numeroSerie: e.target.value}})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Función en la Instalación</label>
                   <textarea 
                     className="form-control" 
-                    style={{ height: '200px' }}
-                    value={book?.manualData.caracteristicasTecnicas} 
-                    onChange={e => setBook({...book!, manualData: {...book!.manualData, caracteristicasTecnicas: e.target.value}})} 
+                    rows={3}
+                    placeholder="Ej: Impulsión de agua para climatización de zona norte..."
+                    value={book?.manualData.funcion} 
+                    onChange={e => setBook({...book!, manualData: {...book!.manualData, funcion: e.target.value}})} 
                   />
-               </div>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Características Técnicas (Bloque B - No sobreescribible)</label>
+                <textarea 
+                  className="form-control" 
+                  style={{ height: '240px' }}
+                  value={book?.manualData.caracteristicasTecnicas} 
+                  onChange={e => setBook({...book!, manualData: {...book!.manualData, caracteristicasTecnicas: e.target.value}})} 
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'docs' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h4 style={{ margin: 0 }}>Galería de Fotos</h4>
+                  <button className="btn" style={{ fontSize: '0.7rem' }}><ImageIcon size={14} /> Añadir Foto</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: 'var(--bg)', padding: '1rem', borderRadius: '8px', minHeight: '150px' }}>
+                  {book?.manualData.fotos.length === 0 && <p className="text-muted" style={{ gridColumn: 'span 3', textAlign: 'center', fontSize: '0.8rem' }}>No hay fotos todavía.</p>}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Manuales del Fabricante</h4>
+                    <button className="btn" style={{ fontSize: '0.7rem' }}><Plus size={14} /> Subir PDF</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {book?.manualData.manuales.length === 0 ? (
+                      <div style={{ padding: '1rem', border: '1px dashed var(--border)', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ningún manual adjunto</div>
+                    ) : (
+                      book?.manualData.manuales.map((m, i) => (
+                        <div key={i} className="card shadow-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileIcon size={16} color="var(--error)" /> {m.nombre}</div>
+                          <button className="btn text-error"><Trash2 size={14} /></button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 style={{ marginBottom: '1rem' }}>Hojas Técnicas</h4>
+                  <div style={{ padding: '1rem', border: '1px dashed var(--border)', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ninguna hoja técnica adjunta</div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -260,6 +465,13 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
               <h3>Plan de Mantenimiento Preventivo</h3>
               <p className="text-muted">Próximamente: Define periodicidades, tareas y checklists automáticos.</p>
             </div>
+          )}
+
+          {activeTab === 'repuestos' && (
+            <RepuestosView 
+              book={book!} 
+              onUpdate={(updatedBook) => setBook(updatedBook)} 
+            />
           )}
 
           {activeTab === 'logs' && (
@@ -287,6 +499,9 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', pt: '1rem', borderTop: '1px solid var(--border)' }}>
           <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ background: 'var(--bg)' }}>
+            <Printer size={18} /> Exportar Libro (PDF)
+          </button>
           <button className="btn btn-primary" onClick={handleSave}>
             <Save size={18} /> Guardar Libro de Mantenimiento
           </button>

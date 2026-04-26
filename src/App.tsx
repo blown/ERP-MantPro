@@ -49,6 +49,24 @@ function App() {
         setCompanyInfo({ nombre: 'MantPro ERP', logo: '' });
       }
     });
+
+    // Seed data for testing if empty
+    const seedData = async () => {
+      const supplierCount = await db.suppliers.count();
+      if (supplierCount === 0) {
+        await db.suppliers.add({
+          nombre: "Suministros Industriales S.A.",
+          telefono: "912345678",
+          email: "ventas@suministros.com",
+          comercial: "Carlos Gomez"
+        });
+      }
+      const buildingCount = await db.buildings.count();
+      if (buildingCount === 0) {
+        await db.buildings.add({ nombre: "Edificio Central" });
+      }
+    };
+    seedData();
   }, []);
 
   const navItems = [
