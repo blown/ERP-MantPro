@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
@@ -117,7 +117,7 @@ export default function MaintenancePage({ onNavigateToPartes }: Props) {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <h3 style={{ margin: 0 }}>{asset.nombre}</h3>
-                        {isOverdue && <AlertTriangle size={20} className="text-error" title="Revisión crítica: > 5 años" />}
+                        {isOverdue && <AlertTriangle size={20} className="text-error" />}
                       </div>
                       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{asset.modelo} | Ref: {asset.referencia}</p>
                       <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 600 }}>

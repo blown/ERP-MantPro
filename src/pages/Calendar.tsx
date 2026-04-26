@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWeekend } from 'date-fns';
@@ -8,7 +8,6 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User } from 'lucid
 export default function CalendarView() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0, 1)); // Iniciamos en Enero 2026
   const holidays = useLiveQuery(() => db.holidays.toArray()) || [];
-  const employees = useLiveQuery(() => db.employees.toArray()) || [];
 
   const days = eachDayOfInterval({
     start: startOfMonth(currentMonth),

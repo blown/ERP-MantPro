@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -9,13 +9,10 @@ import {
   Calendar, 
   Settings as SettingsIcon,
   Bell,
-  Search,
   Plus,
-  FileSpreadsheet,
-  Shirt,
   Wrench,
   ShieldCheck,
-  Flame,
+  FileSpreadsheet,
   X
 } from 'lucide-react';
 import { db } from './db';
@@ -23,7 +20,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 
 // Components
 import SettingsPage from './pages/Settings';
-import ExcelMapper from './components/ExcelMapper';
 import PersonalPage from './pages/Personal';
 import SparesPage from './pages/Spares';
 import ProjectsPage from './pages/Projects';
@@ -36,10 +32,9 @@ import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [targetEmployeeId, setTargetEmployeeId] = useState<number | null>(null);
   const [showInventorySummary, setShowInventorySummary] = useState(false);
   const [companyInfo, setCompanyInfo] = useState({ nombre: 'Cargando...', logo: '' });
-  const [showImport, setShowImport] = useState<any>(null);
+
   useEffect(() => {
     // Initial fetch of settings
     db.settings.toCollection().first().then((settings) => {
@@ -131,8 +126,7 @@ function App() {
         {activeTab === 'configuracion' && <SettingsPage />}
         {activeTab === 'personal' && (
           <PersonalPage 
-            onNavigateToRopa={(empId) => {
-              setTargetEmployeeId(empId);
+            onNavigateToRopa={() => {
               setActiveTab('tareas_anuales');
             }} 
           />
@@ -148,7 +142,6 @@ function App() {
         
         {activeTab === 'dashboard' && (
           <DashboardView 
-            onImport={() => setShowImport('employees')} 
             onShowSummary={() => setShowInventorySummary(true)} 
             onNavigate={(tab) => setActiveTab(tab)}
           />
@@ -163,12 +156,10 @@ function App() {
 }
 
 // Componente para el Dashboard con datos reales
-function DashboardView({ onImport, onShowSummary, onNavigate }: { 
-  onImport: () => void, 
+function DashboardView({ onShowSummary, onNavigate }: { 
   onShowSummary: () => void,
   onNavigate: (tab: string) => void
 }) {
-  const employeeCount = useLiveQuery(() => db.employees.count()) || 0;
   const pendingOrders = useLiveQuery(() => db.orders.where('estado').equals('pendiente').count()) || 0;
   const activeProjects = useLiveQuery(() => db.projects.where('estado').notEqual('terminado').count()) || 0;
   const criticalInspections = useLiveQuery(() => db.regulatoryInspections.toArray().then(inspections => 
@@ -306,7 +297,7 @@ function DashboardView({ onImport, onShowSummary, onNavigate }: {
                 <tr>
                   <th>Pedido</th>
                   <th>Proveedor</th>
-                  <th>Edificio</th>
+                  <th>Observaciones</th>
                   <th>Estado</th>
                   <th>Acción</th>
                 </tr>
@@ -318,7 +309,7 @@ function DashboardView({ onImport, onShowSummary, onNavigate }: {
                     <tr key={order.id}>
                       <td>#{order.numeroPedido}-{order.anio}</td>
                       <td>{supplier?.nombre || 'Pedido...'}</td>
-                      <td>Edificio {order.idEdificio}</td>
+                      <td>{order.observaciones || 'Pedido General'}</td>
                       <td><span className={`status-badge status-${order.estado}`}>{order.estado.toUpperCase()}</span></td>
                       <td><button className="btn" style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Detalles</button></td>
                     </tr>
@@ -432,7 +423,7 @@ function InventorySummaryModal({ onClose }: { onClose: () => void }) {
             <h3 style={{ marginBottom: '1rem' }}>Por Edificio</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               {Object.entries(perBuilding).map(([name, count]: any) => (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', pb: '0.4rem' }}>
+                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
                   <span>{name}</span>
                   <span style={{ fontWeight: 700 }}>{count} ud</span>
                 </div>
@@ -444,7 +435,7 @@ function InventorySummaryModal({ onClose }: { onClose: () => void }) {
             <h3 style={{ marginBottom: '1rem' }}>Por Tipo de Instalación</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
               {Object.entries(perType).map(([name, count]: any) => (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', pb: '0.4rem' }}>
+                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem' }}>
                   <span>{name}</span>
                   <span style={{ fontWeight: 700 }}>{count} ud</span>
                 </div>

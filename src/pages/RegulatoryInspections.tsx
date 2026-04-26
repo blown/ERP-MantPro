@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type RegulatoryInspection } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
@@ -7,9 +7,7 @@ import {
   Plus, 
   FileSpreadsheet, 
   Building2, 
-  Clock, 
   CheckCircle,
-  AlertCircle,
   ExternalLink,
   X,
   FileText,

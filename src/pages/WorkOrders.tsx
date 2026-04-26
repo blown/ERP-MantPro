@@ -1,22 +1,16 @@
-import React, { useState } from 'react';
-import { db, type WorkOrder, type Employee, type Vehicle, type InventoryItem, type Asset } from '../db';
+import { useState } from 'react';
+import { db, type WorkOrder } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Plus, 
   Search, 
   Filter, 
   Wrench, 
-  Clock, 
   CheckCircle, 
-  User, 
-  Truck, 
   Package, 
   X, 
   Save, 
-  ChevronRight,
-  Calendar as CalendarIcon,
-  Trash2,
-  FileText
+  ChevronRight
 } from 'lucide-react';
 
 export default function WorkOrdersPage() {
@@ -167,7 +161,6 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
     descripcionGeneral: ''
   });
 
-  const [materials, setMaterials] = useState<any[]>([]);
 
   const handleSave = async (cerrar: boolean = false) => {
     const finalData = {
@@ -179,17 +172,13 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
     } as WorkOrder;
 
     try {
-      let orderId;
       if (finalData.id) {
-        await db.workOrders.update(finalData.id, finalData);
-        orderId = finalData.id;
+        await db.workOrders.put(finalData);
       } else {
-        orderId = await db.workOrders.add(finalData);
+        await db.workOrders.add(finalData);
       }
 
-      // If closing, trigger automations
       if (cerrar) {
-        // 1. Update Vehicle KM
         if (finalData.idVehiculo && finalData.kmVehiculo) {
             await db.vehicles.update(finalData.idVehiculo, {
                 kmsActuales: finalData.kmVehiculo,
@@ -197,7 +186,6 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
             });
         }
 
-        // 2. Update Maintenance Books for each asset
         for (const assetId of finalData.assetIds) {
             const book = await db.maintenanceBooks.where('idEquipo').equals(assetId).first();
             if (book) {
@@ -230,7 +218,7 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div>
             <h2 style={{ margin: 0 }}>{order ? 'Editar Parte de Trabajo' : 'Nuevo Parte de Trabajo'}</h2>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', mt: '0.2rem' }}>{formData.numeroParte}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{formData.numeroParte}</div>
           </div>
           <button className="btn" onClick={onClose}><X size={24} /></button>
         </div>
@@ -290,7 +278,7 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
                     onChange={e => setFormData({...formData, kmVehiculo: Number(e.target.value)})}
                     placeholder="KM al finalizar"
                 />
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', mt: '0.4rem' }}>Se actualizará automáticamente la ficha de flota al cerrar.</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Se actualizará automáticamente la ficha de flota al cerrar.</p>
             </div>
           </div>
 
@@ -337,7 +325,7 @@ function WorkOrderEditor({ order, onClose }: { order: WorkOrder | null, onClose:
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: '2rem', pt: '1rem', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <button className="btn text-error" onClick={onClose}>Cancelar</button>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button className="btn" onClick={() => handleSave(false)}>

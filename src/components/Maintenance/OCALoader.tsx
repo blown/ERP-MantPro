@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { db, type RegulatoryInspection } from '../../db';
 import { 
-  Upload, 
   X, 
   Check, 
-  FileSpreadsheet, 
-  AlertTriangle,
-  ChevronRight,
-  Database
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface Props {

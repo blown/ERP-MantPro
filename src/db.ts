@@ -160,6 +160,7 @@ export interface Settings {
   vacationLink?: string;
   incendiosLink?: string;
   fechaNotificacionIncendios?: string;
+  direccionEntrega?: string;
 }
 
 export interface ClothingItem {

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type Employee } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { User, Phone, CreditCard, Award, Plus, Trash2, FolderOpen, Edit3, Save, X, Shirt, Key, FileSpreadsheet, Calendar, Settings as SettingsIcon, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { User, Phone, Plus, Trash2, FolderOpen, Edit3, Save, X, Shirt, Key, FileSpreadsheet, Calendar, Settings as SettingsIcon, Link as LinkIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface PersonalPageProps {
@@ -19,7 +19,6 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
   const [isImporting, setIsImporting] = useState(false);
   
   const guardiaList = useLiveQuery(() => db.guardiaWeeks.orderBy('fechaInicio').toArray()) || [];
-  const vacationBalances = useLiveQuery(() => db.vacationBalances.toArray()) || [];
   const settings = useLiveQuery(() => db.settings.toCollection().first());
   const [tempLink, setTempLink] = useState('');
 
@@ -147,7 +146,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
               </div>
             </div>
 
-            <div style={{ marginTop: '1rem', pt: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
               <a 
                 href="https://drive.google.com/drive/folders/1qp8yTcNgEf7IndtvgUHQSD1hwwVX75lM?usp=drive_link" 
                 target="_blank" 
@@ -252,7 +251,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
                   <input name="tarjetaAcceso" defaultValue={selectedEmp?.tarjetaAcceso} className="card" style={{ width: '100%', padding: '8px' }} />
                 </div>
               </div>
-              <div style={{ marginTop: '20px', textAlign: 'right' }}>
+              <div style={{ marginTop: '20px', textAlign: 'right', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
                 <button type="button" className="btn" onClick={handleCloseModal} style={{ marginRight: '10px' }}>Cancelar</button>
                 <button type="submit" className="btn btn-primary">
                   <Save size={18} /> {modalMode === 'add' ? 'Guardar Trabajador' : 'Actualizar Cambios'}
@@ -423,7 +422,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
               )}
             </div>
 
-            <div style={{ marginTop: '20px', textAlign: 'right', pt: '15px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ marginTop: '20px', textAlign: 'right', paddingTop: '15px', borderTop: '1px solid var(--border)' }}>
               <button className="btn btn-primary" onClick={() => setShowGuardiaList(false)}>Cerrar</button>
             </div>
           </div>

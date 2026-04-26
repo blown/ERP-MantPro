@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { db } from '../../db';
 import { 
   Upload, 
   X, 
   Check, 
-  ArrowRight, 
   Layers, 
-  FileSpreadsheet, 
-  AlertTriangle,
   ChevronRight
 } from 'lucide-react';
 

@@ -1,19 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type InventoryItem } from '../../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   Search, 
   Plus, 
   Upload, 
-  ArrowRight, 
   MoreVertical, 
-  Settings, 
   History, 
   RefreshCw,
   ArrowLeftRight,
   BookOpen,
-  Filter,
-  ChevronDown
+  Wrench
 } from 'lucide-react';
 import MaintenanceBookEditor from './MaintenanceBookEditor';
 import SubstitutionWizard from './SubstitutionWizard';

@@ -1,16 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type Project } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   HardHat, 
   Plus, 
   FolderOpen, 
-  FileText, 
   CheckSquare, 
-  Clock, 
   Euro, 
   FileCheck,
-  MoreVertical,
   ExternalLink
 } from 'lucide-react';
 
@@ -18,7 +15,6 @@ export default function ProjectsPage() {
   const projects = useLiveQuery(() => db.projects.toArray()) || [];
   const buildings = useLiveQuery(() => db.buildings.toArray()) || [];
   const [showAdd, setShowAdd] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   const [newProject, setNewProject] = useState<Partial<Project>>({
     estado: 'pendiente',
@@ -30,10 +26,6 @@ export default function ProjectsPage() {
     await db.projects.add(newProject as Project);
     setShowAdd(false);
     setNewProject({ estado: 'pendiente', beneficioCalculado: 0, documentos: [] });
-  };
-
-  const updateStatus = async (id: number, status: Project['estado']) => {
-    await db.projects.update(id, { estado: status });
   };
 
   return (
@@ -77,13 +69,13 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', pt: '1rem', borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Euro size={16} className="text-success" />
                   <span style={{ fontWeight: 700 }}>{project.beneficioCalculado.toLocaleString()} €</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Beneficio</span>
                 </div>
-                <button className="btn" style={{ padding: '0.4rem', background: 'var(--bg)' }} onClick={() => setSelectedProject(project)}>
+                <button className="btn" style={{ padding: '0.4rem', background: 'var(--bg)' }}>
                   <ExternalLink size={16} /> Abrir Carpeta
                 </button>
               </div>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { db, type Settings } from '../db';
-import { Save, Building2, Calculator, Image as ImageIcon } from 'lucide-react';
+import { Save, Building2, Calculator } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
@@ -111,7 +111,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: '3rem', pt: '2rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '2rem' }}>
+        <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '2rem' }}>
           {saved && <span style={{ color: 'var(--success)', fontWeight: 600 }}>✅ Configuración guardada</span>}
           <button className="btn btn-primary" onClick={handleSave} style={{ padding: '0.75rem 2rem' }}>
             <Save size={20} /> Guardar Todo

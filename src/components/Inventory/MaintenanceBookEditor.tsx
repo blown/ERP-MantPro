@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { db, type InventoryItem, type MaintenanceBook } from '../../db';
+import { useState, useEffect } from 'react';
+import { db, type MaintenanceBook, type InventoryItem } from '../../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   X, 
   Save, 
   RefreshCw, 
-  Check, 
-  AlertCircle, 
   History, 
   Plus, 
-  FileText,
-  Info,
-  Package,
-  ShoppingCart,
-  Trash2,
-  Image as ImageIcon,
-  File as FileIcon,
+  ImageIcon,
+  FileIcon,
   Printer,
   BookOpen,
   Settings,
-  ClipboardList
+  ClipboardList,
+  Info,
+  Package,
+  Trash2
 } from 'lucide-react';
 
 interface Props {
@@ -224,13 +220,13 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
     };
     
     fetchBook();
-  }, [item.idEquipo]);
+  }, [item.idEquipo, item.edificio, item.tipoInstalacion, item.descripcion, item.localizacion, item.estado, item.fechaAlta, item.fechaBaja, item.sustituyeA, item.sustituidoPor, item.observaciones]);
 
   const handleSync = async () => {
     if (!book) return;
     setIsSyncing(true);
     
-    // Simulate sync or just perform it
+    // Perform sync
     const updatedBook = {
       ...book,
       syncData: {
@@ -275,7 +271,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
     
     try {
       if (book.id) {
-        await db.maintenanceBooks.update(book.id, book);
+        await db.maintenanceBooks.put(book);
       } else {
         const id = await db.maintenanceBooks.add(book);
         setBook({ ...book, id: id as number });
@@ -297,7 +293,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
       <div className="modal" style={{ maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 700, mb: '0.2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 700, marginBottom: '0.2rem' }}>
               <BookOpen size={20} /> LIBRO DE MANTENIMIENTO TÉCNICO
             </div>
             <h2 style={{ margin: 0 }}>{item.idEquipo}</h2>
@@ -497,7 +493,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', pt: '1rem', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <button className="btn" onClick={onClose}>Cancelar</button>
           <button className="btn" style={{ background: 'var(--bg)' }}>
             <Printer size={18} /> Exportar Libro (PDF)

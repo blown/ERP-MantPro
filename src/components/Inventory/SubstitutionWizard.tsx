@@ -1,15 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type InventoryItem } from '../../db';
 import { 
   X, 
   ArrowRight, 
   ArrowLeftRight, 
-  AlertTriangle, 
   Check, 
-  Split,
-  Calendar,
-  Hash,
-  FileText
+  Split
 } from 'lucide-react';
 
 interface Props {
@@ -38,8 +34,6 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
 
       // 2. Transaction for substitution
       await db.transaction('rw', db.inventoryItems, db.inventoryAuditLogs, async () => {
-        let oldItemToUpdate = item;
-
         // desdoblamiento if needed
         if (needsSplit && splitUnits < item.numeroUnidades) {
             // Deduct units from original
@@ -49,7 +43,7 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
             });
 
             // Create a temporary "Retired" record for the split units
-            const splitId = await db.inventoryItems.add({
+            await db.inventoryItems.add({
                 ...item,
                 id: undefined,
                 idEquipo: `${item.idEquipo}-RETIRED-${Date.now()}`,
@@ -59,9 +53,6 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
                 sustituidoPor: newId,
                 updatedAt: new Date().toISOString()
             });
-            
-            // We use this as our "old" reference for the link
-            oldItemToUpdate = (await db.inventoryItems.get(splitId))!;
         } else {
             // Full substitution
             await db.inventoryItems.update(item.id!, {
@@ -155,7 +146,7 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
         )}
 
         {step === 1 && !needsSplit && (
-            <div style={{ textAlign: 'center', py: '2rem' }}>
+            <div style={{ textAlign: 'center', paddingTop: '2rem', paddingBottom: '2rem' }}>
                 <p>Estás sustituyendo el equipo único <strong>{item.idEquipo}</strong>.</p>
                 <button className="btn btn-primary" onClick={() => setStep(2)} style={{ marginTop: '1rem' }}>
                     Comenzar Proceso <ArrowRight size={18} />

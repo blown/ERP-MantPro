@@ -1,22 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { db, type Order, type Supplier, type Building, type Quotation, type OrderItem, type Project } from '../db';
+import { useState } from 'react';
+import { db, type Order, type Quotation, type OrderItem } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
   ShoppingBag, 
   Plus, 
-  Filter, 
   Search, 
   CheckCircle2, 
-  AlertCircle, 
   FileText, 
-  ArrowRight,
   ClipboardList,
   Euro,
-  Building2,
   Trash2,
-  Package,
-  Calendar,
-  ChevronRight,
   X
 } from 'lucide-react';
 
@@ -31,7 +24,6 @@ export default function SparesPage() {
   const buildings = useLiveQuery(() => db.buildings.toArray()) || [];
   const projects = useLiveQuery(() => db.projects.toArray()) || [];
   const quotations = useLiveQuery(() => db.quotations.orderBy('id').reverse().toArray()) || [];
-  const settings = useLiveQuery(() => db.settings.toCollection().first());
 
   return (
     <div className="spares-container">
@@ -427,7 +419,7 @@ function AnalyticsView({ orderItems, buildings }: any) {
 }
 
 // --- MODAL NUEVO PEDIDO MULTILÍNEA ---
-function NewOrderModal({ suppliers, buildings, projects, onClose }: any) {
+function NewOrderModal({ suppliers, buildings, onClose }: any) {
   const [header, setHeader] = useState({
     idProveedor: 0,
     fechaPedido: new Date().toISOString().split('T')[0],
@@ -577,7 +569,7 @@ function NewOrderModal({ suppliers, buildings, projects, onClose }: any) {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: '1.5rem', borderTop: '2px solid var(--border)' }}>
+        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1.5rem', borderTop: '2px solid var(--border)' }}>
           <div>
             <div className="text-muted" style={{ fontSize: '0.8rem' }}>Total Neto del Pedido</div>
             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent)' }}>

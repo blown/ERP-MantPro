@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { db, type Vehicle } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Truck, Navigation, Calendar, PenTool as Tool, Plus, Save, Wrench, Edit3, X } from 'lucide-react';
+import { Truck, Plus, Save, Wrench, Edit3, X } from 'lucide-react';
 
 interface Props {
   onNavigateToPartes?: () => void;
