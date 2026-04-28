@@ -22,6 +22,7 @@ import {
   Notebook
 } from 'lucide-react';
 import OCALoader from '../components/Maintenance/OCALoader';
+import { formatDate } from '../utils/dateUtils';
 
 export default function RegulatoryInspectionsPage() {
   const [showImporter, setShowImporter] = useState(false);
@@ -212,8 +213,8 @@ export default function RegulatoryInspectionsPage() {
                             return (
                                 <tr key={item.id}>
                                     <td style={{ fontWeight: 600 }}>{item.instalacion}</td>
-                                    <td>{new Date(item.fechaUltima).toLocaleDateString()}</td>
-                                    <td>{new Date(item.fechaProx).toLocaleDateString()}</td>
+                                    <td>{formatDate(item.fechaUltima)}</td>
+                                    <td>{formatDate(item.fechaProx)}</td>
                                     <td style={{ textAlign: 'center' }}>
                                         <span style={{ 
                                             padding: '0.3rem 0.6rem', 

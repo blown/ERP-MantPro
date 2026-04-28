@@ -33,6 +33,8 @@ import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showInventorySummary, setShowInventorySummary] = useState(false);
+  const [sparesView, setSparesView] = useState<'orders' | 'quotations' | 'analytics' | 'suppliers'>('quotations');
+  const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [companyInfo, setCompanyInfo] = useState({ nombre: 'Cargando...', logo: '' });
 
   useEffect(() => {
@@ -53,7 +55,13 @@ function App() {
           nombre: "Suministros Industriales S.A.",
           telefono: "912345678",
           email: "ventas@suministros.com",
-          comercial: "Carlos Gomez"
+          comerciales: [
+            {
+              nombre: "Carlos Gomez",
+              telefono: "600123456",
+              email: "carlos.gomez@suministros.com"
+            }
+          ]
         });
       }
       const buildingCount = await db.buildings.count();
@@ -90,7 +98,13 @@ function App() {
             <a
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                if (item.id === 'compras') {
+                  setSparesView('quotations');
+                  setSparesOrderId(null);
+                }
+                setActiveTab(item.id);
+              }}
             >
               <item.icon size={20} />
               <span>{item.label}</span>
@@ -131,7 +145,13 @@ function App() {
             }} 
           />
         )}
-        {activeTab === 'compras' && <SparesPage />}
+        {activeTab === 'compras' && (
+          <SparesPage 
+            initialView={sparesView} 
+            initialOrderId={sparesOrderId} 
+            onClearOrderId={() => setSparesOrderId(null)} 
+          />
+        )}
         {activeTab === 'obras' && <ProjectsPage />}
         {activeTab === 'mantenimiento' && <MaintenancePage onNavigateToPartes={() => setActiveTab('partes')} />}
         {activeTab === 'vehiculos' && <VehiclesPage onNavigateToPartes={() => setActiveTab('partes')} />}
@@ -144,6 +164,11 @@ function App() {
           <DashboardView 
             onShowSummary={() => setShowInventorySummary(true)} 
             onNavigate={(tab) => setActiveTab(tab)}
+            onViewOrders={(orderId?: number) => {
+              setSparesView('orders');
+              setSparesOrderId(orderId || null);
+              setActiveTab('compras');
+            }}
           />
         )}
 
@@ -156,9 +181,10 @@ function App() {
 }
 
 // Componente para el Dashboard con datos reales
-function DashboardView({ onShowSummary, onNavigate }: { 
+function DashboardView({ onShowSummary, onNavigate, onViewOrders }: { 
   onShowSummary: () => void,
-  onNavigate: (tab: string) => void
+  onNavigate: (tab: string) => void,
+  onViewOrders: (orderId?: number) => void
 }) {
   const pendingOrders = useLiveQuery(() => db.orders.where('estado').equals('pendiente').count()) || 0;
   const activeProjects = useLiveQuery(() => db.projects.where('estado').notEqual('terminado').count()) || 0;
@@ -235,12 +261,12 @@ function DashboardView({ onShowSummary, onNavigate }: {
             {currentGuard ? `Semana ${weekNo} (${currentGuard.fechaInicio})` : 'Importa el Excel en Personal'}
           </div>
         </div>
-        <div className="card">
+        <div className="card" onClick={() => onViewOrders()} style={{ cursor: 'pointer' }}>
           <div className="card-title">Pedidos Pendientes</div>
           <div className="card-value">{pendingOrders}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '0.5rem' }}>Total en curso</div>
         </div>
-        <div className="card">
+        <div className="card" onClick={() => onNavigate('obras')} style={{ cursor: 'pointer' }}>
           <div className="card-title">Obras Activas</div>
           <div className="card-value">{activeProjects}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem' }}>Trabajos en proceso</div>
@@ -286,14 +312,14 @@ function DashboardView({ onShowSummary, onNavigate }: {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-        <div className="card">
+        <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2>Pedidos Recientes</h2>
-            <button className="btn" style={{ padding: '0.25rem 0.5rem', background: 'var(--bg)' }}>Ver todos</button>
+            <button className="btn" onClick={() => onViewOrders()} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg)' }}>Ver todos</button>
           </div>
-          <div className="table-container">
-            <table>
-              <thead>
+          <div className="table-container" style={{ flex: 1, overflowY: 'auto', marginTop: '0.5rem', border: 'none' }}>
+            <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--card-bg)' }}>
                 <tr>
                   <th>Pedido</th>
                   <th>Proveedor</th>
@@ -311,7 +337,7 @@ function DashboardView({ onShowSummary, onNavigate }: {
                       <td>{supplier?.nombre || 'Pedido...'}</td>
                       <td>{order.observaciones || 'Pedido General'}</td>
                       <td><span className={`status-badge status-${order.estado}`}>{order.estado.toUpperCase()}</span></td>
-                      <td><button className="btn" style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Detalles</button></td>
+                      <td><button className="btn" onClick={() => onViewOrders(order.id)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.4rem' }}>Detalles</button></td>
                     </tr>
                   );
                 })}
@@ -320,7 +346,7 @@ function DashboardView({ onShowSummary, onNavigate }: {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card" style={{ height: '400px', overflowY: 'auto' }}>
           <h2>Disponibilidad Personal</h2>
           <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Guardias */}

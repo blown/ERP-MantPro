@@ -46,12 +46,18 @@ export interface VacationBalance {
   festivosEnVacaciones: number;
 }
 
+export interface Comercial {
+  nombre: string;
+  telefono: string;
+  email: string;
+}
+
 export interface Supplier {
   id?: number;
   nombre: string;
   telefono: string;
   email: string;
-  comercial: string;
+  comerciales: Comercial[];
 }
 
 export interface Quotation {
@@ -59,10 +65,12 @@ export interface Quotation {
   idProveedor: number;
   fechaSolicitud: string;
   fechaRecepcion?: string;
-  estado: 'solicitado' | 'recibido' | 'aceptado' | 'rechazado';
+  fechaEntregaEstimada?: string;
+  estado: 'solicitado' | 'recibido' | 'aceptado' | 'rechazado' | 'en_obra';
   importeTotal: number;
   documentoUrl?: string;
   observaciones?: string;
+  lineas?: { descripcion: string; unidades: number; idEdificio: number; tipoRepuesto?: string }[];
 }
 
 export interface Order {
@@ -73,7 +81,7 @@ export interface Order {
   idProveedor: number;
   fechaPedido: string;
   fechaEntregaEstimada?: string;
-  estado: 'pendiente' | 'recibido' | 'abono_pendiente' | 'abonado';
+  estado: 'pendiente' | 'parcialmente_recibido' | 'recibido' | 'abono_pendiente' | 'abonado';
   numeroAlbaran?: string;
   fechaAlbaran?: string;
   observaciones?: string;
@@ -84,6 +92,7 @@ export interface OrderItem {
   idPedido: number;
   idEdificio: number;
   idInstalacion: string;
+  tipoRepuesto?: string;
   idEquipo?: string; // Vinculo opcional a inventario técnico
   idObra?: number;   // Vinculo opcional a obra
   descripcion: string;
@@ -97,11 +106,18 @@ export interface OrderItem {
 
 export interface Project {
   id?: number;
+  idPresupuesto?: number;
   nombreObra: string;
   idEdificio: number;
-  estado: 'pendiente' | 'en_proceso' | 'terminado';
-  adjudicadaA?: string;
+  estado: 'pendiente' | 'adjudicada' | 'terminada';
+  fechaAdjudicacion?: string;
+  fechaTerminacion?: string;
+  empresaAdjudicataria?: string;
+  estadoPreparacion: 'preparar' | 'preparado';
+  porcentajeGanancia: number;
   beneficioCalculado: number;
+  descripcion?: string;
+  items?: { descripcion: string; unidades: number; precioNeto: number; idEdificio?: number }[];
   documentos: { tipo: string; nombre: string; ruta: string }[];
   numeroFactura?: string;
 }
@@ -125,6 +141,10 @@ export interface Asset {
 export interface Building {
   id?: number;
   nombre: string;
+  direccion?: string;
+  anioApertura?: number;
+  superficie?: number;
+  notas?: string;
 }
 
 export interface Vehicle {
@@ -161,6 +181,7 @@ export interface Settings {
   incendiosLink?: string;
   fechaNotificacionIncendios?: string;
   direccionEntrega?: string;
+  tiposRepuesto: string[];
 }
 
 export interface ClothingItem {
@@ -406,6 +427,26 @@ export class MantProDB extends Dexie {
       quotations: '++id, idProveedor, estado',
       orders: '++id, numeroPedido, idProveedor, estado',
       orderItems: '++id, idPedido, idEdificio, idObra'
+    });
+    this.version(14).stores({
+      orders: '++id, numeroPedido, idProveedor, estado, anio'
+    });
+    this.version(15).stores({
+      suppliers: '++id, nombre'
+    }).upgrade(tx => {
+      return tx.table('suppliers').toCollection().modify(supplier => {
+        if (!supplier.comerciales) {
+          supplier.comerciales = [];
+          if (supplier.comercial) {
+            supplier.comerciales.push({
+              nombre: supplier.comercial,
+              telefono: supplier.telefono || '',
+              email: supplier.email || ''
+            });
+            delete supplier.comercial;
+          }
+        }
+      });
     });
   }
 }

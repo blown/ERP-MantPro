@@ -3,6 +3,7 @@ import { db, type Employee } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { User, Phone, Plus, Trash2, FolderOpen, Edit3, Save, X, Shirt, Key, FileSpreadsheet, Calendar, Settings as SettingsIcon, Link as LinkIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { formatDate } from '../utils/dateUtils';
 
 interface PersonalPageProps {
   onNavigateToRopa?: (empId: number) => void;
@@ -397,7 +398,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
                       return (
                         <tr key={g.id} style={{ borderBottom: '1px solid var(--border)', background: isCurrent ? '#eff6ff' : 'transparent' }}>
                           <td style={{ padding: '0.75rem', fontWeight: 600 }}>Sem. {g.semana}</td>
-                          <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{g.fechaInicio}</td>
+                          <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDate(g.fechaInicio)}</td>
                           <td style={{ padding: '0.75rem' }}>
                             <span style={{ 
                               padding: '0.2rem 0.5rem', 

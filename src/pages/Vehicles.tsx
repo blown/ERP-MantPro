@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { db, type Vehicle } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Truck, Plus, Save, Wrench, Edit3, X } from 'lucide-react';
+import { formatDate } from '../utils/dateUtils';
 
 interface Props {
   onNavigateToPartes?: () => void;
@@ -83,11 +84,11 @@ export default function VehiclesPage({ onNavigateToPartes }: Props) {
               <div className="card" style={{ background: 'var(--bg)', border: 'none', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Kilómetros</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{vehicle.kmsActuales.toLocaleString()}</div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Últ: {vehicle.ultimaFechaKms}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Últ: {formatDate(vehicle.ultimaFechaKms)}</div>
               </div>
               <div className="card" style={{ background: 'var(--bg)', border: 'none', textAlign: 'center' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Próx. Revisión</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent)' }}>{vehicle.proximaRevision || 'TBD'}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent)' }}>{formatDate(vehicle.proximaRevision) || 'TBD'}</div>
               </div>
             </div>
 

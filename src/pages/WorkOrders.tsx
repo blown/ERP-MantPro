@@ -12,6 +12,7 @@ import {
   Save, 
   ChevronRight
 } from 'lucide-react';
+import { formatDate } from '../utils/dateUtils';
 
 export default function WorkOrdersPage() {
   const [showEditor, setShowEditor] = useState(false);
@@ -94,7 +95,7 @@ export default function WorkOrdersPage() {
               return (
                 <tr key={order.id}>
                   <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{order.numeroParte}</td>
-                  <td style={{ fontSize: '0.85rem' }}>{new Date(order.fecha).toLocaleDateString()}</td>
+                  <td style={{ fontSize: '0.85rem' }}>{formatDate(order.fecha)}</td>
                   <td style={{ fontSize: '0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>

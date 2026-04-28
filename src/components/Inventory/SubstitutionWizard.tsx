@@ -64,7 +64,7 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
         }
 
         // 3. Create the NEW active equipment
-        await db.inventoryItems.add({
+        const newAssetId = await db.inventoryItems.add({
             ...item,
             id: undefined,
             idEquipo: newId,
@@ -75,12 +75,36 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
             sustituyeA: item.idEquipo, // link back to original ID
             sustituidoPor: undefined,
             descripcion: newDescripcion,
-            libroMantenimientoUrl: undefined, // New book needed
+            libroMantenimientoUrl: undefined, // Will be set after book creation
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         });
 
-        // 4. Audit Log
+        // 4. Create separate Maintenance Book for the new equipment
+        const newBookId = await db.maintenanceBooks.add({
+          idEquipo: newId,
+          syncData: {
+            edificio: item.edificio,
+            tipoInstalacion: item.tipoInstalacion,
+            descripcion: newDescripcion,
+            localizacion: item.localizacion,
+            estado: 'ACTIVO',
+            fechaAlta: fechaAlta,
+            sustituyeA: item.idEquipo,
+          },
+          manualData: {
+            fabricante: '', modelo: '', numeroSerie: '', funcion: '', caracteristicasTecnicas: '',
+            planMantenimiento: '', fotos: [], manuales: [], hojasTecnicas: [],
+            registrosPreventivos: [], incidencias: [], averias: [], mediciones: [],
+            actuacionesCorrectivas: [], repuestos: [], modificaciones: [], anexos: [], historialDocumental: []
+          },
+          fechaUltimaSincronizacion: new Date().toISOString()
+        });
+
+        // Update the asset with the book ID
+        await db.inventoryItems.update(newAssetId, { libroMantenimientoUrl: newBookId.toString() });
+
+        // 5. Audit Log
         await db.inventoryAuditLogs.add({
             fecha: new Date().toISOString(),
             usuario: 'OPERARIO_SISTEMA',
