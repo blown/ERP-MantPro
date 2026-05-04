@@ -79,6 +79,7 @@ function RepuestosView({ book, onUpdate }: { book: MaintenanceBook, onUpdate: (b
             <tr>
               <th style={{ padding: '0.8rem', textAlign: 'left' }}>FECHA INST.</th>
               <th style={{ padding: '0.8rem', textAlign: 'left' }}>PEDIDO</th>
+              <th style={{ padding: '0.8rem', textAlign: 'left' }}>PARTE TRABAJO</th>
               <th style={{ padding: '0.8rem', textAlign: 'left' }}>DESCRIPCIÓN</th>
               <th style={{ padding: '0.8rem', textAlign: 'left' }}>PROVEEDOR</th>
               <th style={{ padding: '0.8rem', textAlign: 'center' }}>UDS</th>
@@ -89,7 +90,32 @@ function RepuestosView({ book, onUpdate }: { book: MaintenanceBook, onUpdate: (b
             {book.manualData.repuestos?.map((spare, idx) => (
               <tr key={idx} style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
                 <td style={{ padding: '0.8rem' }}>{spare.fechaInstalacion}</td>
-                <td style={{ padding: '0.8rem', fontWeight: 600 }}>#{spare.numeroPedido}</td>
+                <td style={{ padding: '0.8rem' }}>
+                  {spare.orderId ? (
+                    <button 
+                      className="btn-link" 
+                      onClick={() => window.dispatchEvent(new CustomEvent('erp-navigate', { detail: { tab: 'compras', view: 'orders', orderId: spare.orderId } }))}
+                      style={{ fontWeight: 600, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 'inherit' }}
+                    >
+                      #{spare.numeroPedido}
+                    </button>
+                  ) : (
+                    `#${spare.numeroPedido}`
+                  )}
+                </td>
+                <td style={{ padding: '0.8rem' }}>
+                  {spare.workOrderId ? (
+                    <button 
+                      className="btn-link" 
+                      onClick={() => window.dispatchEvent(new CustomEvent('erp-navigate', { detail: { tab: 'mantenimiento', workOrderId: spare.workOrderId } }))}
+                      style={{ fontWeight: 600, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 'inherit' }}
+                    >
+                      {spare.workOrderNo}
+                    </button>
+                  ) : (
+                    '-'
+                  )}
+                </td>
                 <td style={{ padding: '0.8rem' }}>{spare.descripcion}</td>
                 <td style={{ padding: '0.8rem' }}>{spare.proveedorNombre}</td>
                 <td style={{ padding: '0.8rem', textAlign: 'center' }}>{spare.unidades}</td>

@@ -33,7 +33,7 @@ export default function SubstitutionWizard({ item, onClose }: Props) {
       }
 
       // 2. Transaction for substitution
-      await db.transaction('rw', db.inventoryItems, db.inventoryAuditLogs, async () => {
+      await db.transaction('rw', db.inventoryItems, db.inventoryAuditLogs, db.maintenanceBooks, async () => {
         // desdoblamiento if needed
         if (needsSplit && splitUnits < item.numeroUnidades) {
             // Deduct units from original

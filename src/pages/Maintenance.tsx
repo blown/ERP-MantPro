@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
@@ -17,13 +17,20 @@ import {
 import { differenceInYears } from 'date-fns';
 import InventoryTable from '../components/Inventory/InventoryTable';
 import InventoryImporter from '../components/Inventory/InventoryImporter';
+import WorkOrdersPage from './WorkOrders';
 
 interface Props {
   onNavigateToPartes?: (assetId?: string) => void;
 }
 
-export default function MaintenancePage({ onNavigateToPartes }: Props) {
-  const [activeTab, setActiveTab] = useState<'inventory' | 'gmao'>('inventory');
+export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId, onClearWorkOrderId }: Props & { initialWorkOrderId?: number | null, onClearWorkOrderId?: () => void }) {
+  const [activeTab, setActiveTab] = useState<'inventory' | 'gmao' | 'partes'>(initialWorkOrderId ? 'partes' : 'partes');
+  
+  useEffect(() => {
+    if (initialWorkOrderId) {
+      setActiveTab('partes');
+    }
+  }, [initialWorkOrderId]);
   const [showImporter, setShowImporter] = useState(false);
   const assets = useLiveQuery(() => db.assets.toArray()) || [];
   const buildings = useLiveQuery(() => db.buildings.toArray()) || [];
@@ -40,6 +47,23 @@ export default function MaintenancePage({ onNavigateToPartes }: Props) {
   return (
     <div className="maintenance-container">
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', gap: '2rem' }}>
+        <button 
+          onClick={() => setActiveTab('partes')}
+          style={{ 
+            padding: '1rem 0.5rem', 
+            background: 'none', 
+            border: 'none', 
+            borderBottom: activeTab === 'partes' ? '3px solid var(--accent)' : '3px solid transparent',
+            color: activeTab === 'partes' ? 'var(--text)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'partes' ? 700 : 500,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          <Wrench size={18} /> Partes de Trabajo
+        </button>
         <button 
           onClick={() => setActiveTab('inventory')}
           style={{ 
@@ -76,9 +100,18 @@ export default function MaintenancePage({ onNavigateToPartes }: Props) {
         </button>
       </div>
 
-      {activeTab === 'inventory' ? (
+      {activeTab === 'partes' && (
+        <WorkOrdersPage 
+          initialWorkOrderId={initialWorkOrderId} 
+          onClearWorkOrderId={onClearWorkOrderId} 
+        />
+      )}
+      
+      {activeTab === 'inventory' && (
         <InventoryTable onImport={() => setShowImporter(true)} />
-      ) : (
+      )}
+
+      {activeTab === 'gmao' && (
         <>
           <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <Search size={20} className="text-muted" />
@@ -145,7 +178,7 @@ export default function MaintenancePage({ onNavigateToPartes }: Props) {
                     <button 
                       className="btn btn-primary" 
                       style={{ padding: '0.5rem' }}
-                      onClick={() => onNavigateToPartes?.()}
+                      onClick={() => setActiveTab('partes')}
                     >
                       <Wrench size={14} /> Parte
                     </button>

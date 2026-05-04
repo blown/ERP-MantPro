@@ -100,212 +100,244 @@ export default function AnnualTasksPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-        
-        {/* TARJETA PRORRATEO */}
-        <div className="card" style={{ border: isProrrateoPending ? '2px solid var(--error)' : '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-            <Calendar size={24} className="text-accent" />
-            <h2 style={{ margin: 0 }}>Prorrateo Anual</h2>
-            {isProrrateoPending && <span className="status-badge" style={{ background: '#fee2e2', color: '#991b1b', marginLeft: 'auto' }}>PENDIENTE</span>}
-          </div>
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Tarea</th>
+              <th style={{ width: '40%' }}>Enlace Google Drive</th>
+              <th>Fecha de Aviso</th>
+              <th>Estado</th>
+              <th style={{ textAlign: 'right' }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* PRORRATEO */}
+            <tr>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Calendar size={20} className="text-accent" />
+                  <span style={{ fontWeight: 600 }}>Prorrateo Anual</span>
+                </div>
+              </td>
+              <td>
+                <input 
+                  type="url" 
+                  className="form-control" 
+                  placeholder="https://docs.google.com/..." 
+                  value={prorrateoLink}
+                  onChange={e => setProrrateoLink(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </td>
+              <td>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  value={fechaProrrateo}
+                  onChange={e => setFechaProrrateo(e.target.value)}
+                />
+              </td>
+              <td>
+                {isProrrateoPending ? (
+                  <span className="status-badge status-pendiente">PENDIENTE</span>
+                ) : (
+                  <span className="status-badge status-terminada">AL DÍA</span>
+                )}
+              </td>
+              <td>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => handleSave('prorrateo')} 
+                    disabled={isSaving || !settings}
+                    title="Guardar"
+                  >
+                    <Save size={18} />
+                  </button>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleOpenLink(prorrateoLink)}
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                    title="Abrir Documento"
+                  >
+                    <ExternalLink size={18} />
+                  </button>
+                </div>
+              </td>
+            </tr>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                <LinkIcon size={16} /> Enlace a Drive
-              </label>
-              <input 
-                type="url" 
-                className="form-control" 
-                placeholder="https://docs.google.com/..." 
-                value={prorrateoLink}
-                onChange={e => setProrrateoLink(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá en Dashboard)</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={fechaProrrateo}
-                onChange={e => setFechaProrrateo(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => handleSave('prorrateo')} 
-              disabled={isSaving || !settings}
-            >
-              <Save size={18} /> Guardar
-            </button>
-            <button 
-              className="btn" 
-              onClick={() => handleOpenLink(prorrateoLink)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-            >
-              Abrir Documento <ExternalLink size={16} />
-            </button>
-          </div>
-        </div>
+            {/* ROPA */}
+            <tr>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Shirt size={20} className="text-success" />
+                  <span style={{ fontWeight: 600 }}>Gestión de Vestuario</span>
+                </div>
+              </td>
+              <td>
+                <input 
+                  type="url" 
+                  className="form-control" 
+                  placeholder="https://docs.google.com/..." 
+                  value={ropaLink}
+                  onChange={e => setRopaLink(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </td>
+              <td>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  value={fechaRopa}
+                  onChange={e => setFechaRopa(e.target.value)}
+                />
+              </td>
+              <td>
+                {isRopaPending ? (
+                  <span className="status-badge status-pendiente">PENDIENTE</span>
+                ) : (
+                  <span className="status-badge status-terminada">AL DÍA</span>
+                )}
+              </td>
+              <td>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleSave('ropa')} 
+                    disabled={isSaving || !settings}
+                    style={{ background: 'var(--success)', color: 'white' }}
+                    title="Guardar"
+                  >
+                    <Save size={18} />
+                  </button>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleOpenLink(ropaLink)}
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                    title="Abrir Documento"
+                  >
+                    <ExternalLink size={18} />
+                  </button>
+                </div>
+              </td>
+            </tr>
 
-        {/* TARJETA ROPA */}
-        <div className="card" style={{ border: isRopaPending ? '2px solid var(--error)' : '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-            <Shirt size={24} className="text-success" />
-            <h2 style={{ margin: 0 }}>Gestión de Vestuario</h2>
-            {isRopaPending && <span className="status-badge" style={{ background: '#fee2e2', color: '#991b1b', marginLeft: 'auto' }}>PENDIENTE</span>}
-          </div>
+            {/* GUARDIA */}
+            <tr>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Shield size={20} style={{ color: '#6366f1' }} />
+                  <span style={{ fontWeight: 600 }}>Actualización de Guardias</span>
+                </div>
+              </td>
+              <td>
+                <input 
+                  type="url" 
+                  className="form-control" 
+                  placeholder="https://docs.google.com/..." 
+                  value={guardiaLink}
+                  onChange={e => setGuardiaLink(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </td>
+              <td>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  value={fechaGuardia}
+                  onChange={e => setFechaGuardia(e.target.value)}
+                />
+              </td>
+              <td>
+                {isGuardiaPending ? (
+                  <span className="status-badge status-pendiente">PENDIENTE</span>
+                ) : (
+                  <span className="status-badge status-terminada">AL DÍA</span>
+                )}
+              </td>
+              <td>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleSave('guardia')} 
+                    disabled={isSaving || !settings}
+                    style={{ background: '#6366f1', color: 'white' }}
+                    title="Guardar"
+                  >
+                    <Save size={18} />
+                  </button>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleOpenLink(guardiaLink)}
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                    title="Abrir Documento"
+                  >
+                    <ExternalLink size={18} />
+                  </button>
+                </div>
+              </td>
+            </tr>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                <LinkIcon size={16} /> Enlace a Drive
-              </label>
-              <input 
-                type="url" 
-                className="form-control" 
-                placeholder="https://docs.google.com/..." 
-                value={ropaLink}
-                onChange={e => setRopaLink(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá en Dashboard)</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={fechaRopa}
-                onChange={e => setFechaRopa(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => handleSave('ropa')} 
-              disabled={isSaving || !settings}
-              style={{ background: 'var(--success)' }}
-            >
-              <Save size={18} /> Guardar
-            </button>
-            <button 
-              className="btn" 
-              onClick={() => handleOpenLink(ropaLink)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-            >
-              Abrir Documento <ExternalLink size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* TARJETA GUARDIA */}
-        <div className="card" style={{ border: isGuardiaPending ? '2px solid var(--error)' : '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-            <Shield size={24} style={{ color: '#6366f1' }} />
-            <h2 style={{ margin: 0 }}>Actualización de Guardias</h2>
-            {isGuardiaPending && <span className="status-badge" style={{ background: '#fee2e2', color: '#991b1b', marginLeft: 'auto' }}>PENDIENTE</span>}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                <LinkIcon size={16} /> Enlace a Drive
-              </label>
-              <input 
-                type="url" 
-                className="form-control" 
-                placeholder="https://docs.google.com/..." 
-                value={guardiaLink}
-                onChange={e => setGuardiaLink(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá en Dashboard)</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={fechaGuardia}
-                onChange={e => setFechaGuardia(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => handleSave('guardia')} 
-              disabled={isSaving || !settings}
-              style={{ background: '#6366f1' }}
-            >
-              <Save size={18} /> Guardar
-            </button>
-            <button 
-              className="btn" 
-              onClick={() => handleOpenLink(guardiaLink)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-            >
-              Abrir Documento <ExternalLink size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* TARJETA INCENDIOS */}
-        <div className="card" style={{ border: isIncendiosPending ? '2px solid var(--error)' : '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-            <Flame size={24} style={{ color: 'var(--error)' }} />
-            <h2 style={{ margin: 0 }}>Gestión de Incendios</h2>
-            {isIncendiosPending && <span className="status-badge" style={{ background: '#fee2e2', color: '#991b1b', marginLeft: 'auto' }}>PENDIENTE</span>}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
-                <LinkIcon size={16} /> Enlace a Drive (Protocolos/Listados)
-              </label>
-              <input 
-                type="url" 
-                className="form-control" 
-                placeholder="https://docs.google.com/..." 
-                value={incendiosLink}
-                onChange={e => setIncendiosLink(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá en Dashboard)</label>
-              <input 
-                type="date" 
-                className="form-control" 
-                value={fechaIncendios}
-                onChange={e => setFechaIncendios(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => handleSave('incendios')} 
-              disabled={isSaving || !settings}
-              style={{ background: 'var(--error)' }}
-            >
-              <Save size={18} /> Guardar
-            </button>
-            <button 
-              className="btn" 
-              onClick={() => handleOpenLink(incendiosLink)}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
-            >
-              Abrir Documento <ExternalLink size={16} />
-            </button>
-          </div>
-        </div>
-
+            {/* INCENDIOS */}
+            <tr>
+              <td>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Flame size={20} style={{ color: 'var(--error)' }} />
+                  <span style={{ fontWeight: 600 }}>Gestión de Incendios</span>
+                </div>
+              </td>
+              <td>
+                <input 
+                  type="url" 
+                  className="form-control" 
+                  placeholder="https://docs.google.com/..." 
+                  value={incendiosLink}
+                  onChange={e => setIncendiosLink(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </td>
+              <td>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  value={fechaIncendios}
+                  onChange={e => setFechaIncendios(e.target.value)}
+                />
+              </td>
+              <td>
+                {isIncendiosPending ? (
+                  <span className="status-badge status-pendiente">PENDIENTE</span>
+                ) : (
+                  <span className="status-badge status-terminada">AL DÍA</span>
+                )}
+              </td>
+              <td>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleSave('incendios')} 
+                    disabled={isSaving || !settings}
+                    style={{ background: 'var(--error)', color: 'white' }}
+                    title="Guardar"
+                  >
+                    <Save size={18} />
+                  </button>
+                  <button 
+                    className="btn" 
+                    onClick={() => handleOpenLink(incendiosLink)}
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+                    title="Abrir Documento"
+                  >
+                    <ExternalLink size={18} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+
     </div>
   );
 }

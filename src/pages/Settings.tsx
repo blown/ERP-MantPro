@@ -174,6 +174,44 @@ export default function SettingsPage() {
                 >
                   <Upload size={18} /> Importar Excel
                 </label>
+                <button 
+                  className="btn" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    background: 'rgba(37, 99, 235, 0.1)',
+                    color: 'var(--accent)',
+                    border: '1px solid rgba(37, 99, 235, 0.2)',
+                    fontWeight: 600,
+                    padding: '0.5rem 1rem'
+                  }}
+                  onClick={async () => {
+                    const inventory = await db.inventoryItems.toArray();
+                    const existingNames = buildings.map(b => b.nombre.toLowerCase());
+                    const inventoryBuildings = Array.from(new Set(inventory.map(i => i.edificio))).filter(Boolean);
+                    
+                    let addedCount = 0;
+                    for (const name of inventoryBuildings) {
+                      if (!existingNames.includes(name.toLowerCase())) {
+                        await db.buildings.add({
+                          nombre: name,
+                          direccion: '',
+                          anioApertura: new Date().getFullYear()
+                        });
+                        addedCount++;
+                      }
+                    }
+                    
+                    if (addedCount > 0) {
+                      alert(`Se han detectado y añadido ${addedCount} edificios nuevos desde el inventario.`);
+                    } else {
+                      alert('No se han encontrado edificios nuevos en el inventario.');
+                    }
+                  }}
+                >
+                  <Plus size={18} /> Sincronizar desde Inventario
+                </button>
               </div>
             </div>
           </div>
@@ -213,11 +251,34 @@ export default function SettingsPage() {
               <tbody>
                 {buildings.map(b => (
                   <tr key={b.id}>
-                    <td style={{ fontWeight: 600 }}>{b.nombre}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{b.direccion || '-'}</td>
-                    <td style={{ textAlign: 'center' }}>{b.anioApertura || '-'}</td>
+                    <td>
+                      <input 
+                        className="form-control" 
+                        style={{ border: 'none', background: 'transparent', padding: '0.2rem', fontWeight: 600, width: '100%' }} 
+                        value={b.nombre} 
+                        onChange={e => db.buildings.update(b.id!, { nombre: e.target.value })} 
+                      />
+                    </td>
+                    <td>
+                      <input 
+                        className="form-control" 
+                        style={{ border: 'none', background: 'transparent', padding: '0.2rem', color: 'var(--text-muted)', width: '100%' }} 
+                        placeholder="Sin dirección..."
+                        value={b.direccion || ''} 
+                        onChange={e => db.buildings.update(b.id!, { direccion: e.target.value })} 
+                      />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="number"
+                        className="form-control" 
+                        style={{ border: 'none', background: 'transparent', padding: '0.2rem', textAlign: 'center', width: '80px' }} 
+                        value={b.anioApertura || ''} 
+                        onChange={e => db.buildings.update(b.id!, { anioApertura: Number(e.target.value) })} 
+                      />
+                    </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button className="btn text-error" onClick={() => handleDeleteBuilding(b.id)}>
+                      <button className="btn text-error" style={{ padding: '0.4rem' }} onClick={() => handleDeleteBuilding(b.id)}>
                         <Trash2 size={16} />
                       </button>
                     </td>

@@ -55,6 +55,7 @@ export interface Comercial {
 export interface Supplier {
   id?: number;
   nombre: string;
+  descripcion?: string;
   telefono: string;
   email: string;
   comerciales: Comercial[];
@@ -302,7 +303,8 @@ export interface WorkOrder {
   id?: number;
   numeroParte: string;
   fecha: string;
-  idOperario: number;
+  idOperario?: number; // Legacy/Lead operator
+  operatorIds: number[]; // Multiple operators
   idVehiculo?: number;
   idEdificio?: number;
   descripcionGeneral: string;
@@ -310,6 +312,7 @@ export interface WorkOrder {
   estado: 'borrador' | 'cerrado';
   assetIds: string[]; // IDs de equipos de inventario técnico
   assetIdsGMAO: number[]; // IDs de activos GMAO (furgonetas, etc)
+  linkedOrderItemIds: number[]; // IDs de lineas de pedido (compras)
   fechaCierre?: string;
   createdAt: string;
   updatedAt: string;
@@ -445,6 +448,19 @@ export class MantProDB extends Dexie {
             });
             delete supplier.comercial;
           }
+        }
+      });
+    });
+
+    this.version(16).stores({
+      workOrders: '++id, numeroParte, *operatorIds, idVehiculo, estado, fecha, *linkedOrderItemIds'
+    }).upgrade(tx => {
+      return tx.table('workOrders').toCollection().modify(wo => {
+        if (!wo.operatorIds) {
+          wo.operatorIds = wo.idOperario ? [wo.idOperario] : [];
+        }
+        if (!wo.linkedOrderItemIds) {
+          wo.linkedOrderItemIds = [];
         }
       });
     });

@@ -35,6 +35,7 @@ function App() {
   const [showInventorySummary, setShowInventorySummary] = useState(false);
   const [sparesView, setSparesView] = useState<'orders' | 'quotations' | 'analytics' | 'suppliers'>('quotations');
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
+  const [workOrderId, setWorkOrderId] = useState<number | null>(null);
   const [companyInfo, setCompanyInfo] = useState({ nombre: 'Cargando...', logo: '' });
 
   useEffect(() => {
@@ -72,6 +73,18 @@ function App() {
     seedData();
   }, []);
 
+  useEffect(() => {
+    const handleNavigate = (e: any) => {
+      const { tab, view, orderId, workOrderId } = e.detail;
+      if (tab) setActiveTab(tab);
+      if (view) setSparesView(view);
+      if (orderId !== undefined) setSparesOrderId(orderId);
+      if (workOrderId !== undefined) setWorkOrderId(workOrderId);
+    };
+    window.addEventListener('erp-navigate', handleNavigate);
+    return () => window.removeEventListener('erp-navigate', handleNavigate);
+  }, []);
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'personal', label: 'Personal', icon: Users },
@@ -80,7 +93,6 @@ function App() {
     { id: 'mantenimiento', label: 'Mantenimiento', icon: BookOpen },
     { id: 'vehiculos', label: 'Vehículos', icon: Truck },
     { id: 'tareas_anuales', label: 'Tareas Anuales', icon: Calendar },
-    { id: 'partes', label: 'Partes', icon: Wrench },
     { id: 'inspecciones_oca', label: 'Inspecciones OCA', icon: ShieldCheck },
     { id: 'configuracion', label: 'Configuración', icon: SettingsIcon },
   ];
@@ -153,12 +165,16 @@ function App() {
           />
         )}
         {activeTab === 'obras' && <ProjectsPage />}
-        {activeTab === 'mantenimiento' && <MaintenancePage onNavigateToPartes={() => setActiveTab('partes')} />}
-        {activeTab === 'vehiculos' && <VehiclesPage onNavigateToPartes={() => setActiveTab('partes')} />}
-        {activeTab === 'tareas_anuales' && <AnnualTasksPage />}
-        {activeTab === 'calendario' && <CalendarView />}
-        {activeTab === 'partes' && <WorkOrdersPage />}
-        {activeTab === 'inspecciones_oca' && <RegulatoryInspectionsPage />}
+        {activeTab === 'mantenimiento' && (
+          <MaintenancePage 
+            initialWorkOrderId={workOrderId} 
+            onClearWorkOrderId={() => setWorkOrderId(null)} 
+          />
+        )}
+        { activeTab === 'vehiculos' && <VehiclesPage onNavigateToPartes={() => setActiveTab('mantenimiento')} />}
+        { activeTab === 'tareas_anuales' && <AnnualTasksPage />}
+        { activeTab === 'calendario' && <CalendarView />}
+        { activeTab === 'inspecciones_oca' && <RegulatoryInspectionsPage />}
         
         {activeTab === 'dashboard' && (
           <DashboardView 

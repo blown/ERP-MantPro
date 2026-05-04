@@ -110,7 +110,6 @@ export default function SparesPage({ initialView, initialOrderId, onClearOrderId
             onNew={() => setShowNewQuotation(true)}
             onEdit={(q: any) => {
               setEditingQuotation(q);
-              setShowNewQuotation(true);
             }}
             onOrderGenerated={() => setActiveView('orders')}
           />
@@ -570,15 +569,6 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado General</div>
             <div style={{ fontWeight: 700, marginTop: '0.2rem', color: order.estado === 'recibido' ? 'var(--success)' : 'inherit' }}>{order.estado.toUpperCase()}</div>
           </div>
-          
-          <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '85px', padding: '1rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Categoría</div>
-            <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--accent)', fontSize: '0.95rem', lineHeight: 1.2 }}>
-              {Array.from(new Set(localItems.map((i: any) => i.tipoRepuesto).filter(Boolean))).length > 1 
-                ? 'Múltiples...' 
-                : (localItems[0]?.tipoRepuesto || 'Sin categoría')}
-            </div>
-          </div>
 
           <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '85px', padding: '1rem' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Número de Albarán</div>
@@ -623,7 +613,7 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
               <tr>
                 <th style={{ padding: '0.6rem 0.4rem', textAlign: 'left', width: '120px' }}>EDIFICIO</th>
                 <th style={{ padding: '0.6rem 0.4rem', textAlign: 'left' }}>DESCRIPCIÓN</th>
-                <th style={{ padding: '0.6rem 0.4rem', textAlign: 'left', width: '180px' }}>VINCULAR EQUIPO</th>
+                <th style={{ padding: '0.6rem 0.4rem', textAlign: 'left', width: '180px' }}>CATEGORÍA</th>
                 <th style={{ padding: '0.6rem 0.2rem', textAlign: 'center', width: '45px' }}>UDS</th>
                 <th style={{ padding: '0.6rem 0.4rem', textAlign: 'center', width: '90px' }}>PRECIO</th>
                 <th style={{ padding: '0.6rem 0.2rem', textAlign: 'center', width: '50px' }}>DTO%</th>
@@ -637,20 +627,30 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
                 const building = buildings.find((b: any) => b.id === item.idEdificio);
                 return (
                   <tr key={item.id} style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
-                    <td style={{ padding: '0.8rem' }}>
-                      <div style={{ fontWeight: 600 }}>{building?.nombre || 'General'}</div>
+                    <td style={{ padding: '0.5rem' }}>
+                      <select 
+                        className="form-control" 
+                        style={{ fontSize: '0.75rem', padding: '0.2rem' }}
+                        value={item.idEdificio || 0}
+                        onChange={e => handleUpdateItem(item.id, 'idEdificio', Number(e.target.value))}
+                      >
+                        <option value={0}>General / Otros</option>
+                        {buildings.map((b: any) => (
+                          <option key={b.id} value={b.id}>{b.nombre}</option>
+                        ))}
+                      </select>
                     </td>
                     <td style={{ padding: '0.8rem' }}>{item.descripcion}</td>
                     <td style={{ padding: '0.8rem' }}>
                       <select 
                         className="form-control" 
                         style={{ fontSize: '0.75rem', padding: '0.2rem' }}
-                        value={item.idEquipo || ''}
-                        onChange={e => handleUpdateItem(item.id, 'idEquipo', e.target.value)}
+                        value={item.tipoRepuesto || ''}
+                        onChange={e => handleUpdateItem(item.id, 'tipoRepuesto', e.target.value)}
                       >
-                        <option value="">-- No vincular --</option>
-                        {inventory.map((inv: any) => (
-                          <option key={inv.id} value={inv.idEquipo}>{inv.idEquipo} - {inv.descripcion.substring(0, 30)}...</option>
+                        <option value="">-- Seleccionar --</option>
+                        {(settings?.tiposRepuesto || ['Climatización', 'Incendios', 'Electricidad', 'Alumbrado', 'Fontanería', 'Herramientas', 'Ropa']).map((cat: string) => (
+                          <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
                     </td>
@@ -1014,7 +1014,7 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
     return { name: t, total };
   }).sort((a: any, b: any) => b.total - a.total);
 
-  const totalGlobal = costPerBuilding.reduce((sum: number, item: any) => sum + item.total, 0);
+  const totalGlobal = filteredItems.reduce((sum: number, i: any) => sum + i.precioNeto, 0);
 
   const handleExportAnalytics = () => {
     const exportData: any[] = [];
@@ -1042,8 +1042,8 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)', padding: '1rem 1.5rem', borderRadius: '12px', border: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <Filter size={18} className="text-muted" />
@@ -1079,7 +1079,7 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
         </button>
       </div>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
         <div className="card shadow-sm" style={{ background: 'var(--accent)', color: 'white' }}>
           <div className="card-title" style={{ color: 'rgba(255,255,255,0.8)' }}>Gasto en el Periodo</div>
           <div className="card-value" style={{ color: 'white' }}>{totalGlobal.toLocaleString()} €</div>
@@ -1099,14 +1099,14 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
         {/* Breakdown per Building */}
-        <div className="card shadow-sm">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: 0 }}>Gasto por Edificio</h3>
-            <Euro size={20} className="text-muted" />
+        <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Gasto por Edificio</h3>
+            <Euro size={18} className="text-muted" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '0.5rem' }}>
             {costPerBuilding.map((item: any) => (
               <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
@@ -1128,12 +1128,12 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
         </div>
 
         {/* Breakdown per Category */}
-        <div className="card shadow-sm">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: 0 }}>Gasto por Categoría</h3>
-            <ShoppingBag size={20} className="text-muted" />
+        <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Gasto por Categoría</h3>
+            <ShoppingBag size={18} className="text-muted" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '0.5rem' }}>
             {costPerCategory.map((item: any) => (
               <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem', background: 'var(--bg)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
@@ -1148,18 +1148,21 @@ function AnalyticsView({ orderItems, buildings, settings, orders }: any) {
         </div>
       </div>
 
-      <div className="card shadow-sm">
-        <h3>Detalle Cruzado: Edificio vs Categoría</h3>
-        <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1.5rem' }}>Gastos detallados para el periodo seleccionado.</p>
+      <div className="card shadow-sm" style={{ padding: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', marginBottom: '0.5rem' }}>Detalle Cruzado: Edificio vs Categoría</h3>
+        <p className="text-muted" style={{ fontSize: '0.75rem', marginBottom: '1rem' }}>Gastos detallados para el periodo seleccionado.</p>
         <div className="table-container" style={{ maxHeight: 'calc(100vh - 350px)', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
-          <table>
-            <thead>
+          <table className="compact-table">
+            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
               <tr>
-                <th>Categoría</th>
-                {buildings.map((b: any) => <th key={b.id} style={{ textAlign: 'center' }}>{b.nombre}</th>)}
-                <th style={{ textAlign: 'right' }}>Total Cat.</th>
+                <th style={{ background: 'var(--bg)', fontSize: '0.75rem' }}>Categoría</th>
+                {buildings.map((b: any) => <th key={b.id} style={{ textAlign: 'center', background: 'var(--bg)', fontSize: '0.75rem' }}>{b.nombre}</th>)}
+                <th style={{ textAlign: 'right', background: 'var(--bg)', fontSize: '0.75rem' }}>Total Cat.</th>
               </tr>
             </thead>
+            <style dangerouslySetInnerHTML={{ __html: `
+              .compact-table th, .compact-table td { padding: 0.5rem !important; font-size: 0.8rem !important; }
+            `}} />
             <tbody>
               {spareTypes.map((t: string) => {
                 const catTotal = filteredItems.filter((i: any) => i.tipoRepuesto === t).reduce((sum: number, i: any) => sum + i.precioNeto, 0);
@@ -1363,7 +1366,7 @@ function NewOrderModal({ suppliers, buildings, settings, onClose }: any) {
                     <td style={{ padding: '0.5rem' }}>
                       <select className="form-control" style={{ fontSize: '0.8rem' }} value={item.tipoRepuesto || ''} onChange={e => updateItem(idx, 'tipoRepuesto', e.target.value)}>
                         <option value="">Seleccionar...</option>
-                        {(settings?.tiposRepuesto || ['Climatización', 'Incendios', 'Electricidad', 'Alumbrado', 'Fontanería']).map((t: string) => (
+                        {(settings?.tiposRepuesto || ['Climatización', 'Incendios', 'Electricidad', 'Alumbrado', 'Fontanería', 'Herramientas', 'Ropa']).map((t: string) => (
                           <option key={t} value={t}>{t}</option>
                         ))}
                       </select>
@@ -1439,7 +1442,7 @@ function QuotationModal({ suppliers, buildings, quotation, settings, onClose }: 
     quotation?.lineas || [{ descripcion: '', unidades: 1, idEdificio: 0, tipoRepuesto: '' }]
   );
 
-  const spareTypes = settings?.tiposRepuesto || ['Climatización', 'Incendios', 'Electricidad', 'Alumbrado', 'Fontanería'];
+  const spareTypes = settings?.tiposRepuesto || ['Climatización', 'Incendios', 'Electricidad', 'Alumbrado', 'Fontanería', 'Herramientas', 'Ropa'];
 
   const addItem = () => {
     setItems([...items, { descripcion: '', unidades: 1, idEdificio: 0, tipoRepuesto: '' }]);
@@ -1460,16 +1463,38 @@ function QuotationModal({ suppliers, buildings, quotation, settings, onClose }: 
   };
 
   const handleSave = async () => {
-    if (!data.idProveedor) return alert('Selecciona un proveedor');
-    
-    const finalData = { ...data, lineas: items };
+    try {
+      if (!data.idProveedor) return alert('Selecciona un proveedor');
+      
+      const finalData = { ...data, lineas: items };
 
-    if (quotation?.id) {
-      await db.quotations.update(quotation.id, finalData);
-    } else {
-      await db.quotations.add(finalData as Quotation);
+      if (quotation?.id) {
+        await db.quotations.update(quotation.id, finalData);
+        
+        // Sync with linked order if it exists (using filter as idPresupuesto is not indexed)
+        const linkedOrder = await db.orders.filter(o => o.idPresupuesto === quotation.id).first();
+        if (linkedOrder) {
+          const orderItems = await db.orderItems.where('idPedido').equals(linkedOrder.id!).toArray();
+          // Simple sync: if line count matches, update building and category
+          if (orderItems.length === items.length) {
+            for (let i = 0; i < items.length; i++) {
+              await db.orderItems.update(orderItems[i].id!, {
+                idEdificio: items[i].idEdificio,
+                tipoRepuesto: items[i].tipoRepuesto
+              });
+            }
+          }
+        }
+        alert('Cambios guardados con éxito.');
+      } else {
+        await db.quotations.add(finalData as Quotation);
+        alert('Solicitud de presupuesto creada.');
+      }
+      onClose();
+    } catch (error) {
+      console.error("Error saving quotation:", error);
+      alert('Error al guardar los cambios. Consulta la consola para más detalles.');
     }
-    onClose();
   };
 
   return (
@@ -1568,13 +1593,25 @@ function QuotationModal({ suppliers, buildings, quotation, settings, onClose }: 
 function SuppliersView({ suppliers }: any) {
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredSuppliers = suppliers.filter((s: any) => 
+    s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div style={{ position: 'relative', width: '300px' }}>
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input className="card" style={{ width: '100%', paddingLeft: '2.5rem' }} placeholder="Buscar proveedor..." />
+          <input 
+            className="card" 
+            style={{ width: '100%', paddingLeft: '2.5rem' }} 
+            placeholder="Buscar proveedor o actividad..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => {
@@ -1602,6 +1639,7 @@ function SuppliersView({ suppliers }: any) {
             <tr>
               <th style={{ background: 'var(--bg)' }}>ID</th>
               <th style={{ background: 'var(--bg)' }}>Empresa</th>
+              <th style={{ background: 'var(--bg)' }}>Descripción / Actividad</th>
               <th style={{ background: 'var(--bg)' }}>Email General</th>
               <th style={{ background: 'var(--bg)' }}>Teléfono General</th>
               <th style={{ background: 'var(--bg)' }}>Contactos Comerciales</th>
@@ -1609,10 +1647,13 @@ function SuppliersView({ suppliers }: any) {
             </tr>
           </thead>
           <tbody>
-            {suppliers.map((s: any) => (
+            {filteredSuppliers.map((s: any) => (
               <tr key={s.id}>
                 <td style={{ fontWeight: 600, color: 'var(--accent)' }}>#{s.id}</td>
                 <td style={{ fontWeight: 700 }}>{s.nombre}</td>
+                <td>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '200px' }}>{s.descripcion || '-'}</div>
+                </td>
                 <td>
                   {s.email ? <a href={`mailto:${s.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'none' }}><Mail size={14} /> {s.email}</a> : <span className="text-muted">-</span>}
                 </td>
@@ -1665,6 +1706,7 @@ function SupplierModal({ supplier, onClose }: any) {
   const [data, setData] = useState({
     id: supplier?.id,
     nombre: supplier?.nombre || '',
+    descripcion: supplier?.descripcion || '',
     email: supplier?.email || '',
     telefono: supplier?.telefono || '',
     comerciales: supplier?.comerciales || []
@@ -1712,6 +1754,16 @@ function SupplierModal({ supplier, onClose }: any) {
           <div className="form-group">
             <label>Nombre de la Empresa *</label>
             <input className="form-control" value={data.nombre} onChange={e => setData({...data, nombre: e.target.value})} />
+          </div>
+          <div className="form-group">
+            <label>Descripción / Servicios (¿Qué nos vende?)</label>
+            <textarea 
+              className="form-control" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={data.descripcion} 
+              onChange={e => setData({...data, descripcion: e.target.value})} 
+              placeholder="Ej: Material eléctrico, Fontanería, Herramientas de mano..."
+            />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
