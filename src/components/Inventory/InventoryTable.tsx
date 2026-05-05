@@ -10,16 +10,19 @@ import {
   RefreshCw,
   ArrowLeftRight,
   BookOpen,
-  Wrench
+  Wrench,
+  FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import MaintenanceBookEditor from './MaintenanceBookEditor';
 import SubstitutionWizard from './SubstitutionWizard';
 
 interface Props {
   onImport: () => void;
+  onCreateWorkOrder?: (assetId: string) => void;
 }
 
-export default function InventoryTable({ onImport }: Props) {
+export default function InventoryTable({ onImport, onCreateWorkOrder }: Props) {
   const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBuilding, setFilterBuilding] = useState('all');
@@ -28,6 +31,86 @@ export default function InventoryTable({ onImport }: Props) {
   const [showBookEditor, setShowBookEditor] = useState(false);
   const [showSubWizard, setShowSubWizard] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<number | null>(null);
+
+  const handleDecommission = async (item: InventoryItem) => {
+    if (confirm(`¿Estás seguro de que deseas dar de baja el equipo ${item.idEquipo}? Esta acción es irreversible.`)) {
+      try {
+        await db.inventoryItems.update(item.id!, { estado: 'BAJA' });
+        
+        // Log to Maintenance Book Historial
+        let book = await db.maintenanceBooks.where('idEquipo').equals(item.idEquipo).first();
+        if (book) {
+          await db.maintenanceBookSyncLogs.add({
+            maintenanceBookId: book.id!,
+            fecha: new Date().toISOString(),
+            accion: 'BAJA_EQUIPO',
+            detalles: `El equipo ha sido dado de baja en el inventario.`
+          });
+        }
+
+        setActionMenuId(null);
+      } catch (err) {
+        console.error(err);
+        alert('Error al dar de baja el equipo.');
+      }
+    }
+  };
+
+  const handleReactivate = async (item: InventoryItem) => {
+    if (confirm(`¿Deseas dar de alta nuevamente el equipo ${item.idEquipo}?`)) {
+      try {
+        await db.inventoryItems.update(item.id!, { estado: 'ACTIVO' });
+
+        // Log to Maintenance Book Historial
+        let book = await db.maintenanceBooks.where('idEquipo').equals(item.idEquipo).first();
+        if (book) {
+          await db.maintenanceBookSyncLogs.add({
+            maintenanceBookId: book.id!,
+            fecha: new Date().toISOString(),
+            accion: 'ALTA_EQUIPO',
+            detalles: `El equipo ha sido reactivado (dado de alta) nuevamente.`
+          });
+        }
+
+        setActionMenuId(null);
+      } catch (err) {
+        console.error(err);
+        alert('Error al dar de alta el equipo.');
+      }
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (filtered.length === 0) {
+      alert('No hay datos para exportar con los filtros actuales.');
+      return;
+    }
+
+    const data = filtered.map(item => ({
+      'ID EQUIPO': item.idEquipo,
+      'ESTADO': item.estado,
+      'EDIFICIO': item.edificio,
+      'INSTALACIÓN': item.tipoInstalacion,
+      'DESCRIPCIÓN': item.descripcion,
+      'LOCALIZACIÓN': item.localizacion,
+      'UDS': item.numeroUnidades,
+      'MEDIDA': item.tipoMedida,
+      'FECHA ALTA': item.fechaAlta || '---',
+      'OBSERVACIONES': item.observaciones || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventario Técnico');
+
+    // Auto-size columns
+    const colWidths = Object.keys(data[0] || {}).map(key => ({
+      wch: Math.max(key.length, ...data.map(row => String(row[key as keyof typeof row]).length)) + 2
+    }));
+    ws['!cols'] = colWidths;
+
+    XLSX.writeFile(wb, `Inventario_Tecnico_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
   const filtered = inventory.filter(item => {
     const matchesSearch = item.idEquipo.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -71,9 +154,14 @@ export default function InventoryTable({ onImport }: Props) {
           {instalacions.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
 
-        <button className="btn btn-primary" onClick={onImport}>
-          <Upload size={18} /> Importar Excel
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn" onClick={handleExportExcel} style={{ background: '#16a34a', color: 'white', border: 'none' }}>
+            <FileSpreadsheet size={18} /> Exportar Excel
+          </button>
+          <button className="btn btn-primary" onClick={onImport}>
+            <Upload size={18} /> Importar Excel
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -147,12 +235,32 @@ export default function InventoryTable({ onImport }: Props) {
                           <RefreshCw size={14} /> Sincronizar Libro
                         </button>
                         <div style={{ borderTop: '1px solid var(--border)', margin: '0.4rem 0' }}></div>
-                        <button className="btn-menu" onClick={() => { /* Navigate to WorkOrders with state */ }}>
+                        <button 
+                          className="btn-menu" 
+                          onClick={() => { 
+                            if (onCreateWorkOrder) onCreateWorkOrder(item.idEquipo);
+                            setActionMenuId(null); 
+                          }}
+                          disabled={item.estado === 'BAJA'}
+                        >
                           <Wrench size={14} /> Crear Parte de Trabajo
                         </button>
-                        <button className="btn-menu text-error">
-                          <History size={14} /> Dar de Baja
-                        </button>
+                        {item.estado === 'BAJA' ? (
+                          <button 
+                            className="btn-menu" 
+                            style={{ color: '#16a34a' }}
+                            onClick={() => handleReactivate(item)}
+                          >
+                            <History size={14} /> Dar de Alta
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn-menu text-error" 
+                            onClick={() => handleDecommission(item)}
+                          >
+                            <History size={14} /> Dar de Baja
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

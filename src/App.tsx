@@ -86,7 +86,7 @@ function App() {
   }, []);
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Panel de control', icon: LayoutDashboard },
     { id: 'personal', label: 'Personal', icon: Users },
     { id: 'compras', label: 'Compras', icon: ShoppingCart },
     { id: 'obras', label: 'Obras', icon: HardHat },

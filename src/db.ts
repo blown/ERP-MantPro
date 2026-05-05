@@ -58,6 +58,8 @@ export interface Supplier {
   descripcion?: string;
   telefono: string;
   email: string;
+  nif?: string;
+  codigoProveedor?: string;
   comerciales: Comercial[];
 }
 
@@ -172,17 +174,21 @@ export interface Settings {
   logoEmpresa: string;
   numeroArea: string;
   importeFranquicia: number;
-  prorrateoLink?: string;
+  direccionEntrega: string;
+  tiposRepuesto?: string[];
   fechaNotificacionProrrateo?: string;
-  clothingLink?: string;
   fechaNotificacionRopa?: string;
   fechaNotificacionGuardia?: string;
+  fechaNotificacionIncendios?: string;
+  // Signatory and export info
+  firmanteNombre?: string;
+  firmanteDni?: string;
+  footerLine?: string;
+  prorrateoLink?: string;
+  clothingLink?: string;
   guardiaLink?: string;
   vacationLink?: string;
   incendiosLink?: string;
-  fechaNotificacionIncendios?: string;
-  direccionEntrega?: string;
-  tiposRepuesto: string[];
 }
 
 export interface ClothingItem {

@@ -11,7 +11,10 @@ export default function SettingsPage() {
     logoEmpresa: '',
     numeroArea: '',
     importeFranquicia: 0,
-    direccionEntrega: ''
+    direccionEntrega: '',
+    firmanteNombre: '',
+    firmanteDni: '',
+    footerLine: ''
   });
   const [saved, setSaved] = useState(false);
 
@@ -133,6 +136,39 @@ export default function SettingsPage() {
               style={{ padding: '0.75rem', border: '1px solid var(--border)', fontWeight: 700 }}
               value={settings.importeFranquicia}
               onChange={(e) => handleInputChange('importeFranquicia', Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Nombre del Firmante (Pedidos)</label>
+            <input 
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.firmanteNombre || ''}
+              onChange={(e) => handleInputChange('firmanteNombre', e.target.value)}
+              placeholder="Ej: D. Julio Caso de los Cobos Fidalgo"
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>DNI del Firmante</label>
+            <input 
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.firmanteDni || ''}
+              onChange={(e) => handleInputChange('firmanteDni', e.target.value)}
+              placeholder="Ej: 9410271-M"
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', gridColumn: '1 / -1' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Línea de Pie de Página (Dirección/Contacto)</label>
+            <input 
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.footerLine || ''}
+              onChange={(e) => handleInputChange('footerLine', e.target.value)}
+              placeholder="Dirección, CIF, Teléfono..."
             />
           </div>
         </div>

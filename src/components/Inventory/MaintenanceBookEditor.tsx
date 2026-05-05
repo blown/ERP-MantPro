@@ -195,6 +195,14 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'technical' | 'docs' | 'plan' | 'repuestos' | 'logs'>('info');
   const [isSyncing, setIsSyncing] = useState(false);
+  const logs = useLiveQuery(() => 
+    db.maintenanceBookSyncLogs
+      .where('maintenanceBookId')
+      .equals(book?.id || 0)
+      .reverse()
+      .toArray()
+  , [book?.id]);
+  const settings = useLiveQuery(() => db.settings.toCollection().first());
 
   // Fetch or create book
   useEffect(() => {
@@ -310,6 +318,246 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
       console.error(err);
       alert('Error al guardar el libro.');
     }
+  };
+
+  const handleExportPDF = () => {
+    if (!book) return;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Libro de Mantenimiento - ${item.idEquipo}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            body { 
+              font-family: 'Inter', -apple-system, sans-serif; 
+              color: #1e293b; 
+              line-height: 1.6; 
+              padding: 40px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            .header { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center; 
+              border-bottom: 2px solid #0ea5e9; 
+              padding-bottom: 20px; 
+              margin-bottom: 30px; 
+            }
+            .logo-placeholder {
+              background: #0ea5e9;
+              color: white;
+              padding: 10px 20px;
+              border-radius: 8px;
+              font-weight: 800;
+              font-size: 20px;
+            }
+            .logo-img { height: 50px; object-fit: contain; }
+            .title-section h1 { margin: 0; color: #0ea5e9; font-size: 24px; font-weight: 800; }
+            .title-section p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
+            
+            .section { margin-bottom: 35px; break-inside: avoid; }
+            .section-title { 
+              background: #f1f5f9; 
+              padding: 10px 15px; 
+              border-left: 5px solid #0ea5e9; 
+              font-weight: 700; 
+              font-size: 14px; 
+              margin-bottom: 20px; 
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              color: #0f172a;
+            }
+            
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .field { margin-bottom: 12px; }
+            .field-label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+            .field-value { font-size: 14px; font-weight: 500; color: #1e293b; }
+            
+            .tech-specs {
+              white-space: pre-wrap;
+              background: #f8fafc;
+              padding: 15px;
+              border-radius: 8px;
+              border: 1px solid #e2e8f0;
+              font-size: 13px;
+              color: #334155;
+              min-height: 100px;
+            }
+
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { 
+              background: #f8fafc; 
+              text-align: left; 
+              padding: 12px 10px; 
+              font-size: 11px; 
+              font-weight: 700; 
+              color: #64748b;
+              border-bottom: 2px solid #e2e8f0; 
+              text-transform: uppercase;
+            }
+            td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155; }
+            
+            .footer { 
+              margin-top: 60px; 
+              border-top: 1px solid #e2e8f0; 
+              padding-top: 20px; 
+              font-size: 10px; 
+              color: #94a3b8; 
+              text-align: center; 
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+
+            @media print {
+              body { padding: 0; }
+              @page { margin: 1.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title-section">
+              <h1>LIBRO DE MANTENIMIENTO TÉCNICO</h1>
+              <p>ID EQUIPO: <strong>${item.idEquipo}</strong></p>
+            </div>
+            ${settings?.logoEmpresa 
+              ? `<img src="${settings.logoEmpresa}" class="logo-img" />` 
+              : `<div class="logo-placeholder">${settings?.nombreEmpresa || 'MantPro'}</div>`
+            }
+          </div>
+
+          <div class="section">
+            <div class="section-title">01. Información General de Inventario</div>
+            <div class="grid">
+              <div class="field">
+                <div class="field-label">Edificio</div>
+                <div class="field-value">${book.syncData.edificio}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Tipo de Instalación</div>
+                <div class="field-value">${book.syncData.tipoInstalacion}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Localización Exacta</div>
+                <div class="field-value">${book.syncData.localizacion}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Estado Operativo</div>
+                <div class="field-value">${book.syncData.estado}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Fecha de Alta</div>
+                <div class="field-value">${book.syncData.fechaAlta || '---'}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Sustituye a</div>
+                <div class="field-value">${book.syncData.sustituyeA || 'Ninguno'}</div>
+              </div>
+            </div>
+            <div class="field" style="margin-top: 15px;">
+              <div class="field-label">Descripción del Activo</div>
+              <div class="field-value">${book.syncData.descripcion}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">02. Datos Técnicos del Fabricante</div>
+            <div class="grid">
+              <div class="field">
+                <div class="field-label">Fabricante</div>
+                <div class="field-value">${book.manualData.fabricante || 'No especificado'}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Modelo / Referencia</div>
+                <div class="field-value">${book.manualData.modelo || 'No especificado'}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Número de Serie</div>
+                <div class="field-value">${book.manualData.numeroSerie || 'No especificado'}</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Función Principal</div>
+                <div class="field-value">${book.manualData.funcion || 'No especificada'}</div>
+              </div>
+            </div>
+            <div class="field" style="margin-top: 20px;">
+              <div class="field-label">Características Técnicas Detalladas</div>
+              <div class="tech-specs">${book.manualData.caracteristicasTecnicas || 'Sin especificaciones técnicas adicionales registradas.'}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">03. Histórico de Repuestos y Componentes</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>FECHA INST.</th>
+                  <th>PEDIDO REF.</th>
+                  <th>DESCRIPCIÓN DEL REPUESTO</th>
+                  <th>PROVEEDOR</th>
+                  <th style="text-align: center;">UDS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(book.manualData.repuestos || []).length > 0 
+                  ? book.manualData.repuestos.map(spare => `
+                    <tr>
+                      <td>${spare.fechaInstalacion}</td>
+                      <td>#${spare.numeroPedido}</td>
+                      <td>${spare.descripcion}</td>
+                      <td>${spare.proveedorNombre}</td>
+                      <td style="text-align: center;">${spare.unidades}</td>
+                    </tr>
+                  `).join('')
+                  : '<tr><td colspan="5" style="text-align:center; padding: 30px; color: #94a3b8;">No se han registrado repuestos instalados en este equipo.</td></tr>'
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="section-title">04. Historial de Seguimiento</div>
+            <p style="font-size: 13px; color: #475569;">
+              Última sincronización de datos con inventario central realizada el <strong>${new Date(book.fechaUltimaSincronizacion).toLocaleString()}</strong>.
+              Este documento refleja el estado actual del equipo en el sistema MantPro.
+            </p>
+          </div>
+
+          <div class="footer">
+            Generado por MantPro ERP el ${new Date().toLocaleString()} - Página 1 de 1
+          </div>
+        </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 500);
+      }, 500);
+    };
   };
 
   if (loading) return null;
@@ -508,11 +756,27 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
                   </tr>
                 </thead>
                 <tbody style={{ fontSize: '0.8rem' }}>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '0.8rem' }}>{new Date().toLocaleDateString()}</td>
-                    <td><span className="status-badge" style={{ background: 'var(--success)', color: 'white' }}>CREACIÓN</span></td>
-                    <td>Apertura de libro de mantenimiento</td>
-                  </tr>
+                  {logs && logs.length > 0 ? logs.map(log => (
+                    <tr key={log.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.8rem' }}>{new Date(log.fecha).toLocaleString()}</td>
+                      <td>
+                        <span className="status-badge" style={{ 
+                          background: log.accion.includes('ALTA') || log.accion.includes('CREACIÓN') ? 'var(--success)' : 
+                                      log.accion.includes('BAJA') ? 'var(--error)' : 'var(--accent)', 
+                          color: 'white' 
+                        }}>
+                          {log.accion}
+                        </span>
+                      </td>
+                      <td>{log.detalles}</td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No hay registros en el historial.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -521,7 +785,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <button className="btn" onClick={onClose}>Cancelar</button>
-          <button className="btn" style={{ background: 'var(--bg)' }}>
+          <button className="btn" onClick={handleExportPDF} style={{ background: 'var(--bg)' }}>
             <Printer size={18} /> Exportar Libro (PDF)
           </button>
           <button className="btn btn-primary" onClick={handleSave}>

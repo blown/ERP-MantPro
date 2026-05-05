@@ -240,7 +240,7 @@ export default function ProjectsPage() {
                       <button className="btn" style={{ padding: '0.4rem', background: 'var(--bg)' }} title="Editar Obra" onClick={() => setEditingProject(project)}>
                         <Edit size={16} />
                       </button>
-                      <button className="btn" style={{ padding: '0.4rem', background: 'var(--bg)' }} title="Ver Documentación">
+                      <button className="btn" style={{ padding: '0.4rem', background: 'var(--bg)' }} title="Ver Documentación" onClick={() => setEditingProject(project)}>
                         <ExternalLink size={16} />
                       </button>
                       <button className="btn text-error" style={{ padding: '0.4rem', background: 'var(--bg)' }} title="Borrar Obra" onClick={() => handleDelete(project.id!)}>
@@ -323,6 +323,30 @@ export default function ProjectsPage() {
 
 function ProjectDetailsModal({ project, buildings, onClose }: any) {
   const [data, setData] = useState({ ...project });
+  const [activeTab, setActiveTab] = useState<'detalles' | 'documentos'>('detalles');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      const newDoc = {
+        tipo: file.type,
+        nombre: file.name,
+        ruta: base64
+      };
+      const updatedDocs = [...(data.documentos || []), newDoc];
+      setData({ ...data, documentos: updatedDocs });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeDoc = (index: number) => {
+    const updatedDocs = (data.documentos || []).filter((_: any, i: number) => i !== index);
+    setData({ ...data, documentos: updatedDocs });
+  };
 
   const handleSave = async () => {
     await db.projects.update(project.id, data);
@@ -348,12 +372,31 @@ function ProjectDetailsModal({ project, buildings, onClose }: any) {
   return (
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: '800px', height: '90vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <h2>Editar Detalles de Obra</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h2 style={{ margin: 0 }}>Obra: {project.nombreObra}</h2>
           <button className="btn" onClick={onClose}><X size={24} /></button>
         </div>
 
+        <div className="tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+          <button 
+            className={`btn ${activeTab === 'detalles' ? 'btn-primary' : ''}`}
+            onClick={() => setActiveTab('detalles')}
+            style={{ padding: '0.5rem 1.5rem' }}
+          >
+            Detalles y Precios
+          </button>
+          <button 
+            className={`btn ${activeTab === 'documentos' ? 'btn-primary' : ''}`}
+            onClick={() => setActiveTab('documentos')}
+            style={{ padding: '0.5rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <FolderOpen size={18} /> Documentación ({(data.documentos || []).length})
+          </button>
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
+          {activeTab === 'detalles' ? (
+            <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label>Nombre de la Obra</label>
@@ -448,8 +491,69 @@ function ProjectDetailsModal({ project, buildings, onClose }: any) {
                 <div style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Precio de Venta Final</div>
                 <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--success)' }}>{totalVenta.toLocaleString()} €</div>
               </div>
-            </div>
           </div>
+        </div>
+      </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="card" style={{ background: 'var(--bg)', padding: '1.5rem', border: '2px dashed var(--border)', textAlign: 'center' }}>
+                <FolderOpen size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }} />
+                <h4>Añadir Documentos</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Sube planos, presupuestos externos, fotos o facturas de la obra.</p>
+                <input 
+                  type="file" 
+                  id="project-doc-upload" 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileChange}
+                />
+                <label htmlFor="project-doc-upload" className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                  <Plus size={18} /> Seleccionar Archivo
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                {(data.documentos || []).map((doc: any, i: number) => (
+                  <div key={i} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ padding: '0.5rem', background: 'var(--bg)', borderRadius: '8px' }}>
+                        <FileText size={20} style={{ color: 'var(--accent)' }} />
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={doc.nombre}>
+                          {doc.nombre}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{doc.tipo || 'Archivo'}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+                      <button 
+                        className="btn" 
+                        style={{ flex: 1, fontSize: '0.75rem', padding: '0.4rem', background: 'var(--bg)' }}
+                        onClick={() => {
+                          const win = window.open();
+                          if (win) win.document.write(`<iframe src="${doc.ruta}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                        }}
+                      >
+                        <ExternalLink size={14} /> Ver
+                      </button>
+                      <button 
+                        className="btn text-error" 
+                        style={{ padding: '0.4rem', background: 'var(--bg)' }}
+                        onClick={() => removeDoc(i)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(data.documentos || []).length === 0 && (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    No hay documentos vinculados a esta obra.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>

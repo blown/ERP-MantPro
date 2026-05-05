@@ -18,7 +18,8 @@ import {
   Download,
   Upload,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  Printer
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { formatDate } from '../utils/dateUtils';
@@ -329,7 +330,7 @@ function OrdersView({ orders, orderItems, suppliers, buildings, settings, onNew,
             <tr>
               <th style={{ background: 'var(--bg)' }}>ID Pedido</th>
               <th style={{ background: 'var(--bg)' }}>Fecha Pedido</th>
-              <th style={{ background: 'var(--bg)' }}>Entrega Est.</th>
+              <th style={{ background: 'var(--bg)' }}>Entrega</th>
               <th style={{ background: 'var(--bg)' }}>Proveedor</th>
               <th style={{ background: 'var(--bg)' }}>Albarán</th>
               <th style={{ background: 'var(--bg)' }}>Líneas</th>
@@ -357,7 +358,9 @@ function OrdersView({ orders, orderItems, suppliers, buildings, settings, onNew,
                 <tr key={order.id}>
                   <td style={{ fontWeight: 600, color: 'var(--accent)' }}>#{order.numeroPedido}/${areaNum}/${order.anio}</td>
                   <td>{formatDate(order.fechaPedido)}</td>
-                  <td>{formatDate(order.fechaEntregaEstimada)}</td>
+                  <td style={{ fontWeight: order.estado === 'recibido' ? 700 : 'normal', color: order.estado === 'recibido' ? 'var(--success)' : 'inherit' }}>
+                    {order.estado === 'recibido' ? formatDate(order.fechaAlbaran) : formatDate(order.fechaEntregaEstimada)}
+                  </td>
                   <td style={{ fontWeight: 700 }}>{supplier?.nombre || 'Cargando...'}</td>
                   <td>{order.numeroAlbaran || <span className="text-muted">Pendiente</span>}</td>
                   <td>{items.length} ud.</td>
@@ -582,7 +585,7 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
           </div>
 
           <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '85px', padding: '1rem' }}>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fecha de Albarán</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fecha de Entrega / Albarán</div>
             <input 
               type="date"
               className="form-control" 
@@ -682,12 +685,160 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
         </div>
 
         <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <button 
+            className="btn" 
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}
+            onClick={() => handleExportOrderPDF(localOrder, localItems, supplier, settings)}
+          >
+            <Printer size={18} /> Exportar Pedido (PDF)
+          </button>
           <button className="btn btn-primary" onClick={handleFinalSave}>Cerrar y Guardar</button>
         </div>
       </div>
     </div>
   );
 }
+
+const handleExportOrderPDF = (order: any, items: any[], supplier: any, settings: any) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) return;
+
+  const total = items.reduce((sum, item) => sum + item.precioNeto, 0);
+
+  const html = `
+    <html>
+      <head>
+        <style>
+          @page { size: A4; margin: 10mm; }
+          body { font-family: 'Arial', sans-serif; color: #333; font-size: 10pt; line-height: 1.2; }
+          .header-table, .info-table, .items-table, .footer-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+          .header-table td, .info-table td, .items-table th, .items-table td, .footer-table td { 
+            border: 1px solid #000; 
+            padding: 4px 8px;
+          }
+          .label { font-weight: bold; font-size: 9pt; }
+          .bg-gray { background-color: #e5e7eb; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .title { font-size: 12pt; font-weight: bold; background: yellow; }
+          
+          .items-table th { background: #f3f4f6; font-size: 9pt; }
+          .items-table td { height: 20px; }
+          .total-row td { border-top: 2px solid #000; font-weight: bold; }
+          
+          .footer-info { font-size: 8pt; text-align: center; margin-top: 10px; border-top: 1px solid #000; padding-top: 5px; }
+          .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+          .signature-box { border: 1px solid #000; padding: 10px; min-height: 80px; }
+          .sign-label { border-bottom: 1px solid #000; font-weight: bold; margin-bottom: 5px; }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td colspan="4" class="text-center title">PEDIDO-PROVEEDOR</td>
+            <td class="bg-gray label">Nº DE PEDIDO</td>
+            <td class="text-center" style="font-weight: bold;">${order.numeroPedido}</td>
+          </tr>
+        </table>
+
+          <table class="info-table">
+          <tr>
+            <td class="bg-gray label" style="width: 15%;">PROVEEDOR</td>
+            <td colspan="2" style="width: 35%;">${supplier?.nombre || '---'}</td>
+            <td class="bg-gray label" style="width: 15%;">COD.PROV.</td>
+            <td colspan="2" style="width: 35%;">${supplier?.codigoProveedor || ''}</td>
+          </tr>
+          <tr>
+            <td class="bg-gray label">N.I.F.:</td>
+            <td colspan="2">${supplier?.nif || ''}</td>
+            <td class="bg-gray label">ÁREA</td>
+            <td class="text-center">${order.areaNum || settings?.numeroArea || '---'}</td>
+            <td class="bg-gray label">FECHA</td>
+            <td class="text-center">${formatDate(order.fechaPedido)}</td>
+          </tr>
+        </table>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 10%;">Cantidad</th>
+              <th style="width: 10%;">Ud.</th>
+              <th style="width: 50%;">Descripción</th>
+              <th style="width: 10%;">Dto.</th>
+              <th style="width: 10%;">Precio Unitario</th>
+              <th style="width: 10%;">Importe (s/i.v.a)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td class="text-center"></td>
+                <td class="text-center">${item.unidades.toFixed(2).replace('.', ',')}</td>
+                <td>${item.descripcion}</td>
+                <td class="text-center">${item.descuento > 0 ? item.descuento + '%' : ''}</td>
+                <td class="text-right">${item.precioPVP.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                <td class="text-right">${item.precioNeto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            `).join('')}
+            ${Array.from({ length: Math.max(0, 10 - items.length) }).map(() => `
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            `).join('')}
+            <tr class="total-row">
+              <td colspan="5" class="text-right label">IMPORTE TOTAL PEDIDO(S/I.V.A)</td>
+              <td class="text-right">${total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p style="font-size: 8pt; margin: 5px 0;">
+          Las facturas incluirán el área y el código de proveedor y se presentarán en delegación en los primeros siete días del mes de suministro.
+        </p>
+
+        <div class="signatures">
+          <div class="signature-box">
+            <div class="sign-label">${settings?.nombreEmpresa || 'Vareser'}</div>
+            <div style="font-size: 9pt;">Fdo.: ${settings?.firmanteNombre || 'D.Julio Caso de los Cobos Fidalgo'}</div>
+            <div style="font-size: 9pt; margin-top: 20px;">D.N.I.: ${settings?.firmanteDni || '9410271-M'}</div>
+          </div>
+          <div class="signature-box">
+            <div class="sign-label">PROVEEDOR</div>
+            <div style="font-size: 9pt;">Firma y sello</div>
+            <div style="font-size: 9pt; margin-top: 10px; color: #666;">SOLICITADO POR CORREO ELECTRÓNICO</div>
+            <div style="font-size: 9pt; margin-top: 10px;">D.N.I.:</div>
+          </div>
+        </div>
+
+        <div class="footer-info">
+          ${settings?.footerLine || 'CL. GENERAL URRUTIA Nº 75 6ª PLANTA 46013 VALENCIA CIF: B96534805 Teléfono: 963186037 Fax: 963757470'}
+        </div>
+      </body>
+    </html>
+  `;
+
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  iframe.onload = () => {
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 500);
+    }, 500);
+  };
+};
 
 // --- VISTA DE PRESUPUESTOS ---
 function QuotationsView({ quotations, suppliers, buildings, settings, onNew, onEdit, onOrderGenerated }: any) {
@@ -1618,6 +1769,8 @@ function SuppliersView({ suppliers }: any) {
             const data = suppliers.map((s: any) => ({
               ID: s.id,
               Empresa: s.nombre,
+              NIF: s.nif || '',
+              Cod_Proveedor: s.codigoProveedor || '',
               Email_Empresa: s.email,
               Telefono_Empresa: s.telefono,
               Total_Comerciales: s.comerciales?.length || 0,
@@ -1709,6 +1862,8 @@ function SupplierModal({ supplier, onClose }: any) {
     descripcion: supplier?.descripcion || '',
     email: supplier?.email || '',
     telefono: supplier?.telefono || '',
+    nif: supplier?.nif || '',
+    codigoProveedor: supplier?.codigoProveedor || '',
     comerciales: supplier?.comerciales || []
   });
 
@@ -1773,6 +1928,16 @@ function SupplierModal({ supplier, onClose }: any) {
             <div className="form-group">
               <label>Email (General/Pedidos)</label>
               <input type="email" className="form-control" value={data.email} onChange={e => setData({...data, email: e.target.value})} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>N.I.F. / C.I.F.</label>
+              <input className="form-control" value={data.nif} onChange={e => setData({...data, nif: e.target.value})} placeholder="Ej: B12345678" />
+            </div>
+            <div className="form-group">
+              <label>Código de Proveedor</label>
+              <input className="form-control" value={data.codigoProveedor} onChange={e => setData({...data, codigoProveedor: e.target.value})} placeholder="Ej: 00123" />
             </div>
           </div>
 

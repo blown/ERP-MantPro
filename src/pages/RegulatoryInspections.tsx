@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import OCALoader from '../components/Maintenance/OCALoader';
 import { formatDate } from '../utils/dateUtils';
+import * as XLSX from 'xlsx';
 
 export default function RegulatoryInspectionsPage() {
   const [showImporter, setShowImporter] = useState(false);
@@ -57,6 +58,50 @@ export default function RegulatoryInspectionsPage() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
+  const handleExportExcel = async () => {
+    try {
+      if (activeTab === 'inspecciones') {
+        if (inspections.length === 0) {
+          alert('No hay inspecciones para exportar.');
+          return;
+        }
+        const data = inspections.map(i => ({
+          Edificio: i.edificio,
+          Instalación: i.instalacion,
+          'Última Realizada': i.fechaUltima,
+          'Próxima Inspección': i.fechaProx,
+          OCA: i.oca,
+          'Período (Años)': i.periodoAnios,
+          Observaciones: i.observaciones
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Inspecciones");
+        XLSX.writeFile(wb, `Listado_Inspecciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+      } else {
+        const companies = await db.inspectorCompanies.toArray();
+        if (companies.length === 0) {
+          alert('No hay empresas en el directorio para exportar.');
+          return;
+        }
+        const data = companies.map(c => ({
+          Nombre: c.nombre,
+          Teléfono: c.telefono,
+          Email: c.email,
+          Dirección: c.direccion,
+          Notas: c.notas
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Directorio OCA");
+        XLSX.writeFile(wb, `Directorio_OCA_${new Date().toISOString().split('T')[0]}.xlsx`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al exportar a Excel.');
+    }
+  };
+
   return (
     <div className="oca-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -86,8 +131,11 @@ export default function RegulatoryInspectionsPage() {
                   Directorio OCA
                 </button>
             </div>
+            <button className="btn" onClick={handleExportExcel} style={{ background: '#16a34a', color: 'white', border: 'none' }}>
+                <FileSpreadsheet size={18} /> Exportar Excel
+            </button>
             <button className="btn" onClick={() => setShowImporter(true)}>
-                <FileSpreadsheet size={18} /> Importar Excel
+                <Plus size={18} /> Importar Excel
             </button>
             <button className="btn btn-primary" onClick={() => { setEditingInspection(null); setShowEditor(true); }}>
                 <Plus size={18} /> Añadir Inspección

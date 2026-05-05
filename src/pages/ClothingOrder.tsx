@@ -75,7 +75,7 @@ export default function ClothingOrderPage() {
             />
           </div>
           <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá "PENDIENTE" en el Dashboard desde este día)</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha de Aviso (Aparecerá "PENDIENTE" en el Panel de control desde este día)</label>
             <input 
               type="date" 
               className="form-control" 

@@ -211,6 +211,8 @@ tr:last-child td {
 .status-pendiente { background: #fee2e2; color: #991b1b; } /* Red */
 .status-adjudicada { background: #fef3c7; color: #92400e; } /* Yellow/Amber */
 .status-terminada { background: #d1fae5; color: #065f46; } /* Green */
+.status-activo { background: #d1fae5; color: #065f46; } /* Green */
+.status-baja { background: #fee2e2; color: #991b1b; } /* Red */
 
 /* Modal */
 .modal-overlay {

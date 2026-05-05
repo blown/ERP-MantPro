@@ -25,6 +25,7 @@ interface Props {
 
 export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId, onClearWorkOrderId }: Props & { initialWorkOrderId?: number | null, onClearWorkOrderId?: () => void }) {
   const [activeTab, setActiveTab] = useState<'inventory' | 'gmao' | 'partes'>(initialWorkOrderId ? 'partes' : 'partes');
+  const [pendingAssetId, setPendingAssetId] = useState<string | null>(null);
   
   useEffect(() => {
     if (initialWorkOrderId) {
@@ -104,11 +105,19 @@ export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId
         <WorkOrdersPage 
           initialWorkOrderId={initialWorkOrderId} 
           onClearWorkOrderId={onClearWorkOrderId} 
+          initialAssetId={pendingAssetId}
+          onClearAssetId={() => setPendingAssetId(null)}
         />
       )}
       
       {activeTab === 'inventory' && (
-        <InventoryTable onImport={() => setShowImporter(true)} />
+        <InventoryTable 
+          onImport={() => setShowImporter(true)} 
+          onCreateWorkOrder={(assetId) => {
+            setPendingAssetId(assetId);
+            setActiveTab('partes');
+          }}
+        />
       )}
 
       {activeTab === 'gmao' && (
