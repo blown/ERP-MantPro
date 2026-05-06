@@ -36,18 +36,13 @@ function App() {
   const [sparesView, setSparesView] = useState<'orders' | 'quotations' | 'analytics' | 'suppliers'>('quotations');
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
-  const [companyInfo, setCompanyInfo] = useState({ nombre: 'Cargando...', logo: '' });
+  const settingsData = useLiveQuery(() => db.settings.toCollection().first());
+  const companyInfo = {
+    nombre: settingsData?.nombreEmpresa || 'MantPro ERP',
+    logo: settingsData?.logoEmpresa || ''
+  };
 
   useEffect(() => {
-    // Initial fetch of settings
-    db.settings.toCollection().first().then((settings) => {
-      if (settings) {
-        setCompanyInfo({ nombre: settings.nombreEmpresa, logo: settings.logoEmpresa });
-      } else {
-        setCompanyInfo({ nombre: 'MantPro ERP', logo: '' });
-      }
-    });
-
     // Seed data for testing if empty
     const seedData = async () => {
       const supplierCount = await db.suppliers.count();
