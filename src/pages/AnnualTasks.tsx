@@ -1,6 +1,3 @@
-import { useState, useEffect } from 'react';
-import { db } from '../db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { ExternalLink, Link as LinkIcon, Save, Calendar, Shirt, CheckCircle, Shield, Flame } from 'lucide-react';
 
 export default function AnnualTasksPage() {
@@ -338,6 +335,75 @@ export default function AnnualTasksPage() {
         </table>
       </div>
 
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 768px) {
+          .annual-tasks-container .table-container table, 
+          .annual-tasks-container .table-container thead, 
+          .annual-tasks-container .table-container tbody, 
+          .annual-tasks-container .table-container th, 
+          .annual-tasks-container .table-container td, 
+          .annual-tasks-container .table-container tr { 
+            display: block; 
+          }
+          
+          .annual-tasks-container .table-container thead tr { 
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+          }
+          
+          .annual-tasks-container .table-container tr { 
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--card-bg);
+          }
+          
+          .annual-tasks-container .table-container td { 
+            border: none;
+            position: relative;
+            padding: 0.5rem 0;
+            padding-left: 50%; 
+          }
+          
+          .annual-tasks-container .table-container td:before { 
+            position: absolute;
+            left: 6px;
+            width: 45%; 
+            padding-right: 10px; 
+            white-space: nowrap;
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+          }
+          
+          .annual-tasks-container .table-container td:nth-of-type(1):before { content: "Tarea"; }
+          .annual-tasks-container .table-container td:nth-of-type(2):before { content: "Link Drive"; }
+          .annual-tasks-container .table-container td:nth-of-type(3):before { content: "Fecha Aviso"; }
+          .annual-tasks-container .table-container td:nth-of-type(4):before { content: "Estado"; }
+          .annual-tasks-container .table-container td:nth-of-type(5):before { content: "Acciones"; }
+
+          .annual-tasks-container .table-container td {
+            padding-left: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+          .annual-tasks-container .table-container td:before {
+            position: static;
+            width: 100%;
+          }
+          .annual-tasks-container .table-container td input {
+            width: 100% !important;
+          }
+          .annual-tasks-container .table-container td div {
+            justify-content: flex-start !important;
+          }
+        }
+      `}} />
     </div>
   );
 }

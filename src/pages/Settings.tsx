@@ -154,16 +154,16 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button 
             className="btn btn-primary" 
             onClick={handleExportBackup}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', flex: '1 1 auto' }}
           >
             <Download size={18} /> Crear Copia de Seguridad Ahora
           </button>
           
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', flex: '1 1 auto' }}>
             <input 
               type="file" 
               id="backup-import" 
@@ -182,7 +182,8 @@ export default function SettingsPage() {
                 background: 'rgba(239, 68, 68, 0.05)',
                 color: 'var(--error)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
-                padding: '0.75rem 1.5rem'
+                padding: '0.75rem 1.5rem',
+                justifyContent: 'center'
               }}
             >
               <RefreshCcw size={18} /> Restaurar Copia
@@ -202,7 +203,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Nombre Comercial</label>
             <input 
@@ -282,6 +283,26 @@ export default function SettingsPage() {
               placeholder="Dirección, CIF, Teléfono..."
             />
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Enlace Vacaciones (Drive)</label>
+            <input 
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.vacationLink || ''}
+              onChange={(e) => handleInputChange('vacationLink', e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Enlace Guardias (Drive)</label>
+            <input 
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.guardiaLink || ''}
+              onChange={(e) => handleInputChange('guardiaLink', e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+          </div>
         </div>
       </div>
 
@@ -290,12 +311,12 @@ export default function SettingsPage() {
           <div style={{ padding: '0.75rem', background: 'var(--bg)', borderRadius: '12px', color: 'var(--accent)' }}>
             <MapPin size={24} />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3>Gestión de Edificios / Centros</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Añade y configura los centros que mantienes.</p>
             </div>
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
               <input 
                 type="file" 
                 id="building-import" 
@@ -363,7 +384,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="card shadow-sm" style={{ marginBottom: '1.5rem', background: 'var(--bg)', padding: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'flex-end' }}>
+          <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Nombre del Centro</label>
               <input className="form-control" style={{ background: 'white' }} value={newBuilding.nombre} onChange={e => setNewBuilding({...newBuilding, nombre: e.target.value})} placeholder="Ej: Edificio Central" />

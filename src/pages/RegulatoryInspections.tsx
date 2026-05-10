@@ -490,6 +490,9 @@ function InspectorDirectory({ highlight }: { highlight: string | null }) {
 }
 
 function InspectionEditor({ inspection, onClose }: { inspection: RegulatoryInspection | null; onClose: () => void }) {
+    const buildings = useLiveQuery(() => db.buildings.toArray()) || [];
+    const companies = useLiveQuery(() => db.inspectorCompanies.toArray()) || [];
+
     const [formData, setFormData] = useState<Partial<RegulatoryInspection>>(inspection || {
         edificio: '',
         descripcionEdificio: '',
@@ -532,12 +535,29 @@ function InspectionEditor({ inspection, onClose }: { inspection: RegulatoryInspe
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label>Edificio (Nombre)</label>
-                        <input className="form-control" value={formData.edificio} onChange={e => setFormData({...formData, edificio: e.target.value})} placeholder="P. ej. ASTURCÓN" />
+                        <select 
+                            className="form-control" 
+                            value={formData.edificio} 
+                            onChange={e => {
+                                const b = buildings.find(build => build.nombre === e.target.value);
+                                setFormData({
+                                    ...formData, 
+                                    edificio: e.target.value,
+                                    descripcionEdificio: b?.direccion || ''
+                                });
+                            }}
+                        >
+                            <option value="">-- Seleccionar Edificio --</option>
+                            {buildings.map(b => (
+                                <option key={b.id} value={b.nombre}>{b.nombre}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label>Descripción del Edificio / Ubicación</label>
                         <input className="form-control" value={formData.descripcionEdificio} onChange={e => setFormData({...formData, descripcionEdificio: e.target.value})} placeholder="Dirección completa..." />
                     </div>
+
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label>Instalación / Equipo</label>
                         <input className="form-control" value={formData.instalacion} onChange={e => setFormData({...formData, instalacion: e.target.value})} placeholder="P. ej. Baja tensión, Ascensor..." />
@@ -552,7 +572,16 @@ function InspectionEditor({ inspection, onClose }: { inspection: RegulatoryInspe
                     </div>
                     <div className="form-group">
                         <label>Empresa OCA</label>
-                        <input className="form-control" value={formData.oca} onChange={e => setFormData({...formData, oca: e.target.value})} placeholder="P. ej. EUROCONTROL" />
+                        <select 
+                            className="form-control" 
+                            value={formData.oca} 
+                            onChange={e => setFormData({...formData, oca: e.target.value})}
+                        >
+                            <option value="">-- Seleccionar OCA --</option>
+                            {companies.map(c => (
+                                <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="form-group">
                         <label>Período (Años)</label>

@@ -47,7 +47,7 @@ export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId
 
   return (
     <div className="maintenance-container">
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', gap: '2rem' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
         <button 
           onClick={() => setActiveTab('partes')}
           style={{ 
@@ -122,28 +122,30 @@ export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId
 
       {activeTab === 'gmao' && (
         <>
-          <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div className="card" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Search size={20} className="text-muted" />
             <input 
               placeholder="Buscar equipo GMAO por nombre, modelo o referencia..." 
-              style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem' }}
+              style={{ flex: '1 1 300px', border: 'none', background: 'transparent', outline: 'none', fontSize: '1rem' }}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
-            <select 
-              className="btn" style={{ background: 'var(--bg)', borderRadius: '8px' }}
-              value={filterBuilding}
-              onChange={e => setFilterBuilding(e.target.value)}
-            >
-              <option value="all">Todos los edificios</option>
-              {buildings.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
-            </select>
-            <button className="btn btn-primary">
-              <Plus size={18} /> Nuevo Activo
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', flex: '1 1 auto', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <select 
+                className="btn" style={{ background: 'var(--bg)', borderRadius: '8px' }}
+                value={filterBuilding}
+                onChange={e => setFilterBuilding(e.target.value)}
+              >
+                <option value="all">Todos los edificios</option>
+                {buildings.map(b => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+              </select>
+              <button className="btn btn-primary">
+                <Plus size={18} /> Nuevo Activo
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
             {filteredAssets.map(asset => {
               const building = buildings.find(b => b.id === asset.idEdificio);
               const lastChange = new Date(asset.fechaUltimoCambio);
@@ -168,7 +170,7 @@ export default function MaintenancePage({ onNavigateToPartes, initialWorkOrderId
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.75rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: '8px' }}>
+                  <div className="grid-2" style={{ gap: '0.5rem', fontSize: '0.75rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: '8px' }}>
                     <div><strong>Gama GMAO:</strong> {asset.gamaGMAO}</div>
                     <div><strong>Peso:</strong> {asset.peso} kg</div>
                     <div><strong>Medidas:</strong> {asset.medidas}</div>

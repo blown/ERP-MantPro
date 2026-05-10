@@ -1,22 +1,33 @@
 import { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, 
   Users, 
+  Settings as SettingsIcon, 
   ShoppingCart, 
-  HardHat, 
-  BookOpen, 
-  Truck, 
+  Wrench, 
+  ClipboardList, 
   Calendar, 
-  Settings as SettingsIcon,
-  Bell,
+  LayoutDashboard,
+  AlertCircle,
+  Clock,
+  LogOut,
+  ChevronRight,
+  TrendingUp,
+  Package,
+  Menu,
+  X,
   Plus,
-  Wrench,
+  Car,
+  HardHat,
+  BookOpen,
+  Truck,
   ShieldCheck,
   FileSpreadsheet,
-  X
+  Bell,
+  ExternalLink
 } from 'lucide-react';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { formatDate, getISOWeek } from './utils/dateUtils';
 
 // Components
 import SettingsPage from './pages/Settings';
@@ -32,6 +43,7 @@ import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showInventorySummary, setShowInventorySummary] = useState(false);
   const [sparesView, setSparesView] = useState<'orders' | 'quotations' | 'analytics' | 'suppliers'>('quotations');
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
@@ -94,10 +106,13 @@ function App() {
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="logo">
-          <HardHat size={32} />
-          <span>MantPro</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <HardHat size={32} />
+            <span>MantPro</span>
+          </div>
+          <X className="sidebar-close" onClick={() => setSidebarOpen(false)} />
         </div>
         
         <nav className="nav-links">
@@ -107,10 +122,11 @@ function App() {
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => {
                 if (item.id === 'compras') {
-                  setSparesView('quotations');
-                  setSparesOrderId(null);
+                   setSparesView('quotations');
+                   setSparesOrderId(null);
                 }
                 setActiveTab(item.id);
+                setSidebarOpen(false); // Close sidebar on mobile after clicking
               }}
             >
               <item.icon size={20} />
@@ -127,9 +143,14 @@ function App() {
 
       <main className="main-content">
         <header>
-          <div>
-            <h1>{navItems.find(n => n.id === activeTab)?.label}</h1>
-            <p style={{ color: 'var(--text-muted)' }}>{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)}>
+              <LayoutDashboard size={24} />
+            </button>
+            <div>
+              <h1>{navItems.find(n => n.id === activeTab)?.label}</h1>
+              <p style={{ color: 'var(--text-muted)' }}>{new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -226,14 +247,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
   const isGuardiaPending = settings?.fechaNotificacionGuardia ? todayStr >= settings.fechaNotificacionGuardia : false;
   const isIncendiosPending = settings?.fechaNotificacionIncendios ? todayStr >= settings.fechaNotificacionIncendios : false;
 
-  // Get current ISO week
-  const today = new Date();
-  const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  const currentYear = d.getUTCFullYear();
+  const { year: currentYear, week: weekNo } = getISOWeek(new Date());
 
   const currentGuard = useLiveQuery(() => 
     db.guardiaWeeks.where('[anio+semana]').equals([currentYear, weekNo]).first()
@@ -253,23 +267,68 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
 
   const nextAbsences = useLiveQuery(async () => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    return await db.vacationEntries
+    const nextWeek = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Extiendo a 15 días para ver más periodos
+    const entries = await db.vacationEntries
       .where('fecha').between(todayStr, nextWeek, true, true)
       .and(e => e.tipo === 'V' || e.tipo === 'C')
       .toArray();
+
+    // Group by person and type, then identify contiguous ranges
+    const grouped: any[] = [];
+    const personMap: { [key: string]: any[] } = {};
+
+    entries.sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(e => {
+      const key = `${e.operarioNombre}-${e.tipo}`;
+      if (!personMap[key]) personMap[key] = [];
+      personMap[key].push(e);
+    });
+
+    Object.values(personMap).forEach(personEntries => {
+      if (personEntries.length === 0) return;
+      
+      let currentRange: any = null;
+      personEntries.forEach(e => {
+        const date = new Date(e.fecha);
+        if (!currentRange) {
+          currentRange = { ...e, startDate: e.fecha, endDate: e.fecha };
+        } else {
+          const prevDate = new Date(currentRange.endDate);
+          const diffDays = (date.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (diffDays <= 1) { // Contiguous
+            currentRange.endDate = e.fecha;
+          } else {
+            grouped.push(currentRange);
+            currentRange = { ...e, startDate: e.fecha, endDate: e.fecha };
+          }
+        }
+      });
+      if (currentRange) grouped.push(currentRange);
+    });
+
+    return grouped.sort((a, b) => a.startDate.localeCompare(b.startDate));
   }) || [];
 
   return (
     <>
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
-        <div className="card" onClick={() => onNavigate('personal')} style={{ cursor: 'pointer', border: !currentGuard ? '1px dashed var(--warning)' : '1px solid var(--border)' }}>
+      <div className="stats-grid">
+        <div className="card" onClick={() => onNavigate('personal')} style={{ cursor: 'pointer', border: !currentGuard ? '1px dashed var(--warning)' : '1px solid var(--border)', position: 'relative' }}>
+          {settings?.guardiaLink && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(settings.guardiaLink, '_blank');
+              }}
+              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'var(--bg)', border: '1px solid var(--border)', padding: '0.4rem', borderRadius: '8px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem' }}
+              title="Abrir Hoja Drive"
+            >
+              <ExternalLink size={14} /> Drive
+            </button>
+          )}
           <div className="card-title">Personal de Guardia</div>
-          <div className="card-value" style={{ fontSize: currentGuard ? '1.5rem' : '2rem' }}>
-            {currentGuard ? currentGuard.operarioNombre : 'Sin Cargar'}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            {currentGuard ? `Semana ${weekNo} (${currentGuard.fechaInicio})` : 'Importa el Excel en Personal'}
+          <div className="card-value">{currentGuard ? currentGuard.operarioNombre.toUpperCase() : 'NADIE'}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '0.5rem' }}>
+            {currentGuard ? `Semana ${weekNo} (${formatDate(currentGuard.fechaInicio)})` : 'Importa el Excel en Personal'}
           </div>
         </div>
         <div className="card" onClick={() => onViewOrders()} style={{ cursor: 'pointer' }}>
@@ -297,7 +356,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
           <div className="card-value" style={{ color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#ef4444' : 'inherit' }}>
             {(isProrrateoPending ? 1 : 0) + (isRopaPending ? 1 : 0) + (isGuardiaPending ? 1 : 0) + (isIncendiosPending ? 1 : 0)}/4
           </div>
-          <div style={{ fontSize: '0.75rem', color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#b91c1c' : 'var(--text-muted)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+          <div style={{ fontSize: '0.75rem', color: (isProrrateoPending || isRopaPending || isGuardiaPending || isIncendiosPending) ? '#b91c1c' : 'var(--text-muted)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600 }}>Prorrateo | Ropa | Guardia | Incendios</span>
           </div>
         </div>
@@ -365,15 +424,15 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
               <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Próximas Guardias</div>
               {nextGuards.length > 0 ? nextGuards.map((g, idx) => (
                 <div key={`g-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '8px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-                      {g.operarioNombre[0]}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.operarioNombre}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Semana {g.semana} ({g.fechaInicio})</div>
-                    </div>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '0.8rem' }}>
+                    {g.operarioNombre.charAt(0)}
                   </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.operarioNombre}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Semana {g.semana} ({formatDate(g.fechaInicio)})</div>
+                  </div>
+                </div>
                 </div>
               )) : (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No hay próximas guardias</div>
@@ -382,7 +441,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
 
             {/* Vacaciones / Compensatorios */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Vacaciones / Comp. (7 días)</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Vacaciones / Comp. (Próximos 15 días)</div>
               {nextAbsences.length > 0 ? nextAbsences.map((a, idx) => (
                 <div key={`a-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -391,7 +450,9 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
                     </div>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{a.operarioNombre}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{a.fecha}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {a.startDate === a.endDate ? a.startDate : `${a.startDate} al ${a.endDate}`}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -455,7 +516,7 @@ function InventorySummaryModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="grid-2" style={{ gap: '1.5rem' }}>
           <div className="card" style={{ background: 'var(--bg)' }}>
             <h3 style={{ marginBottom: '1rem' }}>Por Edificio</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>

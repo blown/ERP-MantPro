@@ -59,8 +59,8 @@ export default function SparesPage({ initialView, initialOrderId, onClearOrderId
   const settings = useLiveQuery(() => db.settings.toCollection().first());
 
   return (
-    <div className="spares-container" style={{ height: 'calc(100vh - 120px)', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '1rem', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', gap: '2rem' }}>
+    <div className="spares-container" style={{ height: 'auto', minHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', padding: '1rem', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
         <button 
           onClick={() => setActiveView('quotations')}
           className={`nav-tab ${activeView === 'quotations' ? 'active' : ''}`}
@@ -252,8 +252,8 @@ function OrdersView({ orders, orderItems, suppliers, buildings, settings, onNew,
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', width: '300px' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input className="card" style={{ width: '100%', paddingLeft: '2.5rem' }} placeholder="Buscar pedido o albarán..." />
@@ -269,7 +269,7 @@ function OrdersView({ orders, orderItems, suppliers, buildings, settings, onNew,
             </select>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button className="btn" style={{ background: 'var(--success)', color: 'white' }} onClick={() => {
             const flattenedData: any[] = [];
             orders.forEach((o: any) => {
@@ -567,7 +567,7 @@ function OrderDetailsModal({ order, items: initialItems, suppliers, buildings, s
           <button className="btn" onClick={onClose}><X size={24} /></button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
           <div className="card shadow-sm" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '85px', padding: '1rem', borderLeft: `4px solid ${order.estado === 'recibido' ? 'var(--success)' : order.estado === 'parcialmente_recibido' ? 'var(--warning)' : 'var(--error)'}` }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Estado General</div>
             <div style={{ fontWeight: 700, marginTop: '0.2rem', color: order.estado === 'recibido' ? 'var(--success)' : 'inherit' }}>{order.estado.toUpperCase()}</div>

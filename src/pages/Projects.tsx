@@ -397,7 +397,7 @@ function ProjectDetailsModal({ project, buildings, onClose }: any) {
         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '1rem' }}>
           {activeTab === 'detalles' ? (
             <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="grid-2" style={{ marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label>Nombre de la Obra</label>
               <input className="form-control" value={data.nombreObra} onChange={e => setData({...data, nombreObra: e.target.value})} />
@@ -410,7 +410,7 @@ function ProjectDetailsModal({ project, buildings, onClose }: any) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="grid-3" style={{ marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label>Estado de la Obra</label>
               <select className="form-control" value={data.estado} onChange={e => handleStatusChange(e.target.value)}>

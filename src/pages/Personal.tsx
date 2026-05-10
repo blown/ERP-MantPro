@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { db, type Employee } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { User, Phone, Plus, Trash2, FolderOpen, Edit3, Save, X, Shirt, Key, FileSpreadsheet, Calendar, Settings as SettingsIcon, Link as LinkIcon } from 'lucide-react';
+import { User, Phone, Plus, Trash2, FolderOpen, Edit3, Save, X, Shirt, Key, FileSpreadsheet, Calendar, Settings as SettingsIcon, Link as LinkIcon, ExternalLink, Clock, Shield } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, getISOWeek } from '../utils/dateUtils';
 
 interface PersonalPageProps {
   onNavigateToRopa?: (empId: number) => void;
@@ -16,7 +16,9 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
   const [showImportGuardia, setShowImportGuardia] = useState(false);
   const [showGuardiaList, setShowGuardiaList] = useState(false);
   const [showVacationLinkModal, setShowVacationLinkModal] = useState(false);
-  const [showImportVacation, setShowImportVacation] = useState(false);
+  const [showGuardiaLinkModal, setShowGuardiaLinkModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingGuardia, setIsSyncingGuardia] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   
   const guardiaList = useLiveQuery(() => db.guardiaWeeks.orderBy('fechaInicio').toArray()) || [];
@@ -44,68 +46,226 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
     setSelectedEmp(null);
   };
 
+  const handleSyncDrive = async () => {
+    if (!settings?.vacationLink) {
+      alert('Primero debes configurar el enlace de Vacaciones (Drive).');
+      return;
+    }
+
+    let url = settings.vacationLink;
+    // Convert regular edit link to CSV export link if necessary
+    if (url.includes('/edit')) {
+      url = url.replace(/\/edit.*$/, '/export?format=csv');
+    } else if (url.includes('/pubhtml')) {
+      url = url.replace('/pubhtml', '/pub?output=csv');
+    }
+
+    setIsSyncing(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('No se pudo acceder al archivo. Verifica que esté publicado en la web.');
+      
+      const csvText = await response.text();
+      const rows = csvText.split('\n').map(row => {
+        // Simple CSV split (handles basic quotes but this sheet seems simple)
+        return row.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+      });
+
+      if (rows.length < 3) throw new Error('El archivo no parece tener el formato correcto.');
+
+      const year = parseInt(rows[0][0]) || new Date().getFullYear();
+      const entries: any[] = [];
+      const balances: any[] = [];
+
+      // Generate date map for the year
+      const dateMap: string[] = [];
+      const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+      const monthsDays = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      
+      for (let m = 0; m < 12; m++) {
+        for (let d = 1; d <= monthsDays[m]; d++) {
+          dateMap.push(`${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+        }
+      }
+
+      // Process each employee row (starting from row 2)
+      for (let i = 2; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 2) continue;
+        
+        const name = row[0].toUpperCase();
+        if (!name || name === 'NOMBRE' || name === '' || name.includes('EMPLEADO')) continue;
+
+        // 1. Process Day Columns (1 to 365/366)
+        for (let j = 0; j < dateMap.length; j++) {
+          const colIdx = j + 1;
+          const val = row[colIdx]?.toUpperCase();
+          if (val === 'V' || val === 'C' || val === 'F' || val === 'PER' || val === 'REC') {
+            entries.push({
+              operarioNombre: name,
+              anio: year,
+              tipo: val,
+              fecha: dateMap[j]
+            });
+          }
+        }
+
+        // 2. Process Summary Columns (offset by dateMap.length + extra columns if any)
+        // In the specific format: Summary starts after Dec 31 (col 366 for non-leap)
+        const summaryOffset = dateMap.length + 1; 
+        // Some sheets have extra columns (like Jan 2027) - we need to find "Días solicitados"
+        // For simplicity, we use the offset found in the sample: dateMap.length + 1 + (extra columns)
+        // Based on analysis, the summary columns are at the end.
+        if (row.length > summaryOffset + 5) {
+          balances.push({
+            operarioNombre: name,
+            anio: year,
+            vacacionesSolicitadas: parseFloat(row[row.length - 6]) || 0,
+            vacacionesRestantes: parseFloat(row[row.length - 5]) || 0,
+            compensatoriosSolicitados: parseFloat(row[row.length - 4]) || 0,
+            compensatoriosRestantes: parseFloat(row[row.length - 3]) || 0,
+            diasXHoras: parseFloat(row[row.length - 2]) || 0,
+            festivosEnVacaciones: parseFloat(row[row.length - 1]) || 0
+          });
+        }
+      }
+
+      await db.transaction('rw', [db.vacationEntries, db.vacationBalances], async () => {
+        await db.vacationEntries.where('anio').equals(year).delete();
+        await db.vacationBalances.where('anio').equals(year).delete();
+        await db.vacationEntries.bulkAdd(entries);
+        await db.vacationBalances.bulkAdd(balances);
+      });
+
+      alert(`Sincronización completada: ${balances.length} operarios actualizados.`);
+    } catch (err: any) {
+      console.error(err);
+      alert('Error en la sincronización: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncGuardia = async () => {
+    if (!settings?.guardiaLink) {
+      alert('Primero debes configurar el enlace de Guardias (Drive) en Configuración.');
+      return;
+    }
+
+    let url = settings.guardiaLink;
+    if (url.includes('/edit')) {
+      url = url.replace(/\/edit.*$/, '/export?format=csv');
+    } else if (url.includes('/pubhtml')) {
+      url = url.replace('/pubhtml', '/pub?output=csv');
+    }
+
+    setIsSyncingGuardia(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('No se pudo acceder al archivo de guardias.');
+      
+      const csvText = await response.text();
+      const rows = csvText.split('\n').map(row => row.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+
+      const guards: any[] = [];
+      
+      const getISOWeek = (date: Date) => {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return {
+          week: Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7),
+          year: d.getUTCFullYear()
+        };
+      };
+
+      rows.forEach(row => {
+        if (row.length < 2) return;
+        const dateStr = row[0];
+        const name = row[1];
+        
+        // Simple date validation (d/m/yyyy)
+        if (dateStr && dateStr.includes('/') && name && name.length > 2) {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            if (!isNaN(d.getTime())) {
+              const { week, year } = getISOWeek(d);
+              guards.push({
+                anio: year,
+                semana: week,
+                fechaInicio: d.toISOString().split('T')[0], // Standardize to YYYY-MM-DD
+                operarioNombre: name.toUpperCase()
+              });
+            }
+          }
+        }
+      });
+
+      if (guards.length === 0) throw new Error('No se encontraron datos de guardia válidos en las columnas A y B.');
+
+      await db.transaction('rw', db.guardiaWeeks, async () => {
+        // Clear old guards for the years found in the sheet
+        const years = Array.from(new Set(guards.map(g => g.anio)));
+        for (const y of years) {
+          await db.guardiaWeeks.where('anio').equals(y).delete();
+        }
+        await db.guardiaWeeks.bulkAdd(guards);
+      });
+
+      alert(`Sincronización de guardias completada: ${guards.length} semanas cargadas.`);
+    } catch (err: any) {
+      console.error(err);
+      alert('Error en la sincronización de guardias: ' + err.message);
+    } finally {
+      setIsSyncingGuardia(false);
+    }
+  };
+
   return (
     <div className="personal-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div className="personal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
           <h2>Gestión de Personal</h2>
           <p style={{ color: 'var(--text-muted)' }}>Gestión de oficiales, titulaciones y equipos corporativos.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn" onClick={() => setShowGuardiaList(true)} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <FolderOpen size={20} /> Ver Lista
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-end' }}>
+          {/* Fila Guardias */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '0.5rem' }}>Guardias</span>
+            <button className="btn" onClick={handleSyncGuardia} disabled={isSyncingGuardia} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--accent)', padding: '0.5rem 0.75rem' }}>
+              <LinkIcon size={18} className={isSyncingGuardia ? 'spin' : ''} />
             </button>
-            <button className="btn" onClick={() => setShowImportGuardia(true)} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <FileSpreadsheet size={20} /> Cargar Guardias
-            </button>
-            <button className="btn" onClick={async () => {
-              if (confirm('¿Estás seguro de que quieres eliminar TODA la lista de guardias?')) {
-                await db.guardiaWeeks.clear();
-                alert('Lista de guardias eliminada correctamente.');
-              }
-            }} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--error)' }}>
-              <Trash2 size={20} /> Eliminar Lista
+            <button className="btn" onClick={() => {
+              setTempLink(settings?.guardiaLink || '');
+              setShowGuardiaLinkModal(true);
+            }} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+              <Clock size={20} /> Guardias (Drive)
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn" onClick={() => {
-              if (settings?.vacationLink) {
-                window.open(settings.vacationLink, '_blank');
-              } else {
-                setTempLink('');
-                setShowVacationLinkModal(true);
-              }
-            }} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-              <Calendar size={20} /> Vacaciones (Drive)
-            </button>
-            <button className="btn" onClick={() => setShowImportVacation(true)} style={{ padding: '0.5rem', background: 'var(--bg)', border: '1px solid var(--border)' }} title="Cargar archivo Excel">
-              <Plus size={16} />
+          {/* Fila Vacaciones */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '0.5rem' }}>Vacaciones</span>
+            <button className="btn" onClick={handleSyncDrive} disabled={isSyncing} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--accent)', padding: '0.5rem 0.75rem' }}>
+              <LinkIcon size={18} className={isSyncing ? 'spin' : ''} />
             </button>
             <button className="btn" onClick={() => {
               setTempLink(settings?.vacationLink || '');
               setShowVacationLinkModal(true);
-            }} style={{ padding: '0.5rem', background: 'var(--bg)', border: '1px solid var(--border)' }} title="Configurar Enlace">
-              <SettingsIcon size={16} />
-            </button>
-            <button className="btn" onClick={async () => {
-              if (confirm('¿Borrar todos los datos de vacaciones?')) {
-                await db.vacationEntries.clear();
-                await db.vacationBalances.clear();
-              }
-            }} style={{ padding: '0.5rem', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--error)' }} title="Eliminar Datos">
-              <Trash2 size={16} />
+            }} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+              <Calendar size={20} /> Vacaciones (Drive)
             </button>
           </div>
 
-          <button className="btn btn-primary" onClick={handleOpenAdd}>
+          <button className="btn btn-primary" onClick={handleOpenAdd} style={{ marginTop: '0.5rem' }}>
             <Plus size={20} /> Añadir Trabajador
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      <div className="employee-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
         {employees.map(emp => (
           <div key={emp.id} className="card" style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.5rem' }}>
@@ -210,7 +370,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
               }
               handleCloseModal();
             }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div className="grid-2">
                 <div className="form-group">
                   <label>Nombre</label>
                   <input name="nombre" defaultValue={selectedEmp?.nombre} className="card" style={{ width: '100%', padding: '8px' }} required />
@@ -290,7 +450,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
                     const workbook = XLSX.read(data);
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
-                    const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, cellDates: true });
 
                     // Find header row
                     let headerIdx = -1;
@@ -308,43 +468,49 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
 
                     const rows = json.slice(headerIdx + 1);
                     const guardiaWeeks: any[] = [];
-                    let currentYear = new Date().getFullYear();
 
                     for (const row of rows) {
-                      let excelDate = row[0];
+                      const excelDateValue = row[0];
                       const operarioNombre = row[1];
 
-                      if (!excelDate || !operarioNombre) continue;
+                      if (!excelDateValue || !operarioNombre) continue;
 
-                      // Handle cases where excelDate might be a string
-                      excelDate = Number(excelDate);
-                      if (isNaN(excelDate)) continue;
-
-                      // Convert Excel serial date to JS Date (UTC to avoid timezone offsets)
-                      // 25569 is the difference in days between 1900-01-01 and 1970-01-01
-                      const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+                      let date: Date;
+                      if (excelDateValue instanceof Date) {
+                        date = excelDateValue;
+                      } else {
+                        // Fallback for serial numbers - use XLSX utility to get parts
+                        const num = Number(excelDateValue);
+                        if (isNaN(num)) continue;
+                        const parsed = XLSX.SSF.parse_date_code(num);
+                        date = new Date(parsed.y, parsed.m - 1, parsed.d + 1);
+                      }
                       
-                      // Ensure we work in UTC to get consistent week numbers
-                      const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-                      const dayNum = d.getUTCDay() || 7;
-                      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-                      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-                      const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+                      if (excelDateValue instanceof Date) {
+                        date = new Date(excelDateValue.getTime() + 86400000);
+                      }
+                      
+                      // Use the shared utility
+                      const { year, week } = getISOWeek(date);
+
+                      // Ensure we get the local YYYY-MM-DD accurately
+                      const yyyy = date.getFullYear();
+                      const mm = String(date.getMonth() + 1).padStart(2, '0');
+                      const dd = String(date.getDate()).padStart(2, '0');
+                      const fechaIso = `${yyyy}-${mm}-${dd}`;
 
                       guardiaWeeks.push({
-                        anio: d.getUTCFullYear(),
-                        semana: weekNo,
-                        fechaInicio: date.toISOString().split('T')[0],
+                        anio: year,
+                        semana: week,
+                        fechaInicio: fechaIso,
                         operarioNombre: String(operarioNombre).trim()
                       });
-                      
-                      currentYear = d.getUTCFullYear();
                     }
 
                     if (guardiaWeeks.length > 0) {
-                      await db.guardiaWeeks.where('anio').equals(currentYear).delete();
+                      await db.guardiaWeeks.clear();
                       await db.guardiaWeeks.bulkAdd(guardiaWeeks);
-                      alert(`¡Éxito! Se han cargado ${guardiaWeeks.length} semanas para el año ${currentYear}.`);
+                      alert(`¡Éxito! Se han cargado ${guardiaWeeks.length} semanas.`);
                       setShowImportGuardia(false);
                     } else {
                       alert('No se encontraron datos válidos en el archivo.');
@@ -376,9 +542,9 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
               <button className="btn" onClick={() => setShowGuardiaList(false)}><X size={20} /></button>
             </div>
             
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
+            <div className="table-container" style={{ overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
               {guardiaList.length > 0 ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 1 }}>
                     <tr style={{ borderBottom: '2px solid var(--border)' }}>
                       <th style={{ textAlign: 'left', padding: '0.75rem' }}>Semana</th>
@@ -391,9 +557,13 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
                       const todayStr = new Date().toISOString().split('T')[0];
                       const start = g.fechaInicio;
                       const startDate = new Date(start);
-                      const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
-                      const endStr = endDate.toISOString().split('T')[0];
-                      const isCurrent = todayStr >= start && todayStr <= endStr;
+                      let isCurrent = false;
+                      
+                      if (!isNaN(startDate.getTime())) {
+                        const endDate = new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000);
+                        const endStr = endDate.toISOString().split('T')[0];
+                        isCurrent = todayStr >= start && todayStr <= endStr;
+                      }
                       
                       return (
                         <tr key={g.id} style={{ borderBottom: '1px solid var(--border)', background: isCurrent ? '#eff6ff' : 'transparent' }}>
@@ -429,6 +599,7 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
           </div>
         </div>
       )}
+
       {showVacationLinkModal && (
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: '500px' }}>
@@ -460,6 +631,17 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
               <button className="btn" onClick={() => setShowVacationLinkModal(false)}>Cancelar</button>
+              {(tempLink || settings?.vacationLink) && (
+                <button className="btn" onClick={() => {
+                  let url = tempLink || settings?.vacationLink || '';
+                  // If it's a CSV export link, try to show the web view instead
+                  if (url.includes('/export?format=csv')) url = url.replace('/export?format=csv', '/edit');
+                  if (url.includes('/pub?output=csv')) url = url.replace('/pub?output=csv', '/pubhtml');
+                  window.open(url, '_blank');
+                }} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <ExternalLink size={18} /> Abrir Enlace
+                </button>
+              )}
               <button className="btn btn-primary" onClick={async () => {
                 if (settings?.id) {
                   await db.settings.update(settings.id, { vacationLink: tempLink });
@@ -473,110 +655,66 @@ export default function PersonalPage({ onNavigateToRopa }: PersonalPageProps) {
           </div>
         </div>
       )}
-      {showImportVacation && (
+
+      {showGuardiaLinkModal && (
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: '500px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h2>Importar Vacaciones</h2>
-              <button className="btn" onClick={() => setShowImportVacation(false)}><X size={20} /></button>
+              <h2>Configurar Enlace de Guardias</h2>
+              <button className="btn" onClick={() => setShowGuardiaLinkModal(false)}><X size={20} /></button>
             </div>
             
             <p style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Selecciona el archivo <strong>vacaciones.xlsx</strong> descargado de Drive.
+              Pega aquí el enlace de tu hoja de cálculo en <strong>Google Drive</strong> para acceder rápidamente.
             </p>
 
-            <div style={{ padding: '2rem', border: '2px dashed var(--border)', borderRadius: 'var(--radius)', textAlign: 'center', marginBottom: '1.5rem' }}>
-              <input 
-                type="file" 
-                accept=".xlsx, .xls" 
-                id="vacation-upload"
-                style={{ display: 'none' }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  
-                  setIsImporting(true);
-                  try {
-                    const data = await file.arrayBuffer();
-                    const workbook = XLSX.read(data);
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-                    const year = Number(json[0][0]) || new Date().getFullYear();
-                    const entries: any[] = [];
-                    const balances: any[] = [];
-
-                    const dateMap: string[] = [];
-                    const monthsDays = [31, (year % 4 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-                    for (let m = 0; m < 12; m++) {
-                      for (let d = 1; d <= monthsDays[m]; d++) {
-                        const dateStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                        dateMap.push(dateStr);
-                      }
-                    }
-
-                    for (let i = 2; i < json.length; i++) {
-                      const row = json[i];
-                      if (!row || row.length < 1) continue;
-                      const rawName = String(row[0] || '').trim();
-                      if (!rawName || rawName === '' || rawName.toLowerCase() === 'nombre' || rawName.length < 2) continue;
-                      const operarioNombre = rawName.toUpperCase();
-
-                      for (let j = 0; j < dateMap.length; j++) {
-                        const cellValue = String(row[j + 1] || '').trim().toUpperCase();
-                        if (cellValue === 'V' || cellValue === 'C' || cellValue === 'F') {
-                          entries.push({ operarioNombre, anio: year, tipo: cellValue, fecha: dateMap[j] });
-                        }
-                      }
-
-                      const summaryOffset = 1 + dateMap.length;
-                      if (row.length > summaryOffset) {
-                        balances.push({
-                          operarioNombre,
-                          anio: year,
-                          vacacionesSolicitadas: Number(row[summaryOffset]) || 0,
-                          vacacionesRestantes: Number(row[summaryOffset + 1]) || 0,
-                          compensatoriosSolicitados: Number(row[summaryOffset + 2]) || 0,
-                          compensatoriosRestantes: Number(row[summaryOffset + 3]) || 0,
-                          diasXHoras: Number(row[summaryOffset + 4]) || 0,
-                          festivosEnVacaciones: Number(row[summaryOffset + 5]) || 0
-                        });
-                      }
-                    }
-
-                    if (entries.length === 0 && balances.length === 0) {
-                      alert('No se encontraron datos. Verifica el formato del Excel.');
-                      return;
-                    }
-
-                    await db.transaction('rw', [db.vacationEntries, db.vacationBalances], async () => {
-                      await db.vacationEntries.where('anio').equals(year).delete();
-                      await db.vacationBalances.where('anio').equals(year).delete();
-                      await db.vacationEntries.bulkAdd(entries);
-                      await db.vacationBalances.bulkAdd(balances);
-                    });
-
-                    alert(`¡Éxito! Se han cargado ${balances.length} operarios y ${entries.length} ausencias.`);
-                    setShowImportVacation(false);
-                  } catch (error) {
-                    console.error(error);
-                    alert('Error al procesar el archivo.');
-                  } finally {
-                    setIsImporting(false);
-                  }
-                }}
-              />
-              <label htmlFor="vacation-upload" className="btn btn-primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                {isImporting ? 'Procesando...' : <><Plus size={18} /> Seleccionar Archivo</>}
-              </label>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Enlace a Google Drive</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <LinkIcon size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="input" 
+                    style={{ paddingLeft: '40px', width: '100%' }}
+                    placeholder="https://docs.google.com/spreadsheets/..."
+                    value={tempLink}
+                    onChange={(e) => setTempLink(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div style={{ textAlign: 'right' }}>
-              <button className="btn" onClick={() => setShowImportVacation(false)}>Cancelar</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button className="btn" onClick={() => setShowGuardiaLinkModal(false)}>Cancelar</button>
+              {(tempLink || settings?.guardiaLink) && (
+                <button className="btn" onClick={() => {
+                  let url = tempLink || settings?.guardiaLink || '';
+                  // If it's a CSV export link, try to show the web view instead
+                  if (url.includes('/export?format=csv')) url = url.replace('/export?format=csv', '/edit');
+                  if (url.includes('/pub?output=csv')) url = url.replace('/pub?output=csv', '/pubhtml');
+                  window.open(url, '_blank');
+                }} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                  <ExternalLink size={18} /> Abrir Enlace
+                </button>
+              )}
+              <button className="btn" onClick={() => setShowGuardiaList(true)} style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                <FolderOpen size={18} /> Ver Lista
+              </button>
+              <button className="btn btn-primary" onClick={async () => {
+                if (settings?.id) {
+                  await db.settings.update(settings.id, { guardiaLink: tempLink });
+                  alert('Enlace guardado correctamente.');
+                  setShowGuardiaLinkModal(false);
+                }
+              }}>
+                <Save size={18} /> Guardar Enlace
+              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
