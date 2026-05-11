@@ -43,6 +43,7 @@ import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
 import TelegramInbox from './components/TelegramInbox';
 
 function App() {
+  console.log("Renderizando App...");
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showInventorySummary, setShowInventorySummary] = useState(false);
