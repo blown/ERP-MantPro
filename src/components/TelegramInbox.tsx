@@ -19,7 +19,7 @@ interface Props {
 
 export default function TelegramInbox({ onClose }: Props) {
   const [syncing, setSyncing] = useState(false);
-  const messages = useLiveQuery(() => db.telegramInbox.where('processed').equals(false).toArray()) || [];
+  const messages = useLiveQuery(() => db.telegramInbox?.where('processed').equals(false).toArray()) || [];
   
   const parseMessage = (text: string): { type: TelegramInboxMessage['type'], data: any } => {
     const t = text.trim().toUpperCase();

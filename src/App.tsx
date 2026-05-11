@@ -214,7 +214,6 @@ function App() {
         { activeTab === 'inspecciones_oca' && <RegulatoryInspectionsPage />}
         { activeTab === 'configuracion' && <SettingsPage />}
         
-        {showTelegramInbox && <TelegramInbox onClose={() => setShowTelegramInbox(false)} />}
         
         {activeTab === 'dashboard' && (
           <DashboardView 
@@ -228,10 +227,11 @@ function App() {
           />
         )}
 
-        {showInventorySummary && (
-          <InventorySummaryModal onClose={() => setShowInventorySummary(false)} />
-        )}
       </main>
+      {showTelegramInbox && <TelegramInbox onClose={() => setShowTelegramInbox(false)} />}
+      {showInventorySummary && (
+        <InventorySummaryModal onClose={() => setShowInventorySummary(false)} />
+      )}
     </div>
   );
 }
