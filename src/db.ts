@@ -492,7 +492,7 @@ export class MantProDB extends Dexie {
       orderItems: '++id, idPedido, idEdificio, idObra, estado'
     });
 
-    this.version(18).stores({
+    this.version(19).stores({
       employees: '++id, dni, nombre',
       suppliers: '++id, nombre',
       orders: '++id, numeroPedido, idProveedor, estado, anio',
