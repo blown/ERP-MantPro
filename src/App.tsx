@@ -186,7 +186,7 @@ function App() {
           </div>
         </header>
 
-        {activeTab === 'configuracion' && <SettingsPage />}
+
         {activeTab === 'personal' && (
           <PersonalPage 
             onNavigateToRopa={() => {
