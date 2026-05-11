@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db, type MaintenanceBook, type InventoryItem } from '../../db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { 
@@ -203,6 +203,71 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
       .toArray()
   , [book?.id]);
   const settings = useLiveQuery(() => db.settings.toCollection().first());
+  
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const manualInputRef = useRef<HTMLInputElement>(null);
+  const hojaInputRef = useRef<HTMLInputElement>(null);
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'foto' | 'manual' | 'hoja') => {
+    const file = e.target.files?.[0];
+    if (!file || !book) return;
+
+    try {
+      const base64 = await fileToBase64(file);
+      if (type === 'foto') {
+        setBook({
+          ...book,
+          manualData: {
+            ...book.manualData,
+            fotos: [...book.manualData.fotos, base64]
+          }
+        });
+      } else if (type === 'manual') {
+        setBook({
+          ...book,
+          manualData: {
+            ...book.manualData,
+            manuales: [...book.manualData.manuales, { nombre: file.name, url: base64 }]
+          }
+        });
+      } else if (type === 'hoja') {
+        setBook({
+          ...book,
+          manualData: {
+            ...book.manualData,
+            hojasTecnicas: [...book.manualData.hojasTecnicas, { nombre: file.name, url: base64 }]
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error al subir archivo:', err);
+      alert('Error al procesar el archivo');
+    }
+    // Reset input
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number, type: 'foto' | 'manual' | 'hoja') => {
+    if (!book) return;
+    const newData = { ...book.manualData };
+    if (type === 'foto') {
+      newData.fotos = newData.fotos.filter((_, i) => i !== index);
+    } else if (type === 'manual') {
+      newData.manuales = newData.manuales.filter((_, i) => i !== index);
+    } else if (type === 'hoja') {
+      newData.hojasTecnicas = newData.hojasTecnicas.filter((_, i) => i !== index);
+    }
+    setBook({ ...book, manualData: newData });
+  };
 
   // Fetch or create book
   useEffect(() => {
@@ -703,9 +768,29 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h4 style={{ margin: 0 }}>Galería de Fotos</h4>
-                  <button className="btn" style={{ fontSize: '0.7rem' }}><ImageIcon size={14} /> Añadir Foto</button>
+                  <button className="btn" style={{ fontSize: '0.7rem' }} onClick={() => photoInputRef.current?.click()}>
+                    <ImageIcon size={14} /> Añadir Foto
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={photoInputRef} 
+                    style={{ display: 'none' }} 
+                    accept="image/*" 
+                    onChange={e => handleFileUpload(e, 'foto')} 
+                  />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: 'var(--bg)', padding: '1rem', borderRadius: '8px', minHeight: '150px' }}>
+                  {book?.manualData.fotos.map((foto, i) => (
+                    <div key={i} style={{ position: 'relative', aspectRatio: '1', background: '#eee', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                      <img src={foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Equipo ${i}`} />
+                      <button 
+                        onClick={() => removeFile(i, 'foto')}
+                        style={{ position: 'absolute', top: '4px', right: '4px', background: 'var(--error)', color: 'white', border: 'none', borderRadius: '4px', padding: '2px', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
                   {book?.manualData.fotos.length === 0 && <p className="text-muted" style={{ gridColumn: 'span 3', textAlign: 'center', fontSize: '0.8rem' }}>No hay fotos todavía.</p>}
                 </div>
               </div>
@@ -713,7 +798,16 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h4 style={{ margin: 0 }}>Manuales del Fabricante</h4>
-                    <button className="btn" style={{ fontSize: '0.7rem' }}><Plus size={14} /> Subir PDF</button>
+                    <button className="btn" style={{ fontSize: '0.7rem' }} onClick={() => manualInputRef.current?.click()}>
+                      <Plus size={14} /> Subir PDF
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={manualInputRef} 
+                      style={{ display: 'none' }} 
+                      accept="application/pdf" 
+                      onChange={e => handleFileUpload(e, 'manual')} 
+                    />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {book?.manualData.manuales.length === 0 ? (
@@ -721,16 +815,55 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
                     ) : (
                       book?.manualData.manuales.map((m, i) => (
                         <div key={i} className="card shadow-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileIcon size={16} color="var(--error)" /> {m.nombre}</div>
-                          <button className="btn text-error"><Trash2 size={14} /></button>
+                          <div 
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                            onClick={() => {
+                              const win = window.open();
+                              win?.document.write(`<iframe src="${m.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                            }}
+                          >
+                            <FileIcon size={16} color="var(--error)" /> {m.nombre}
+                          </div>
+                          <button className="btn text-error" onClick={() => removeFile(i, 'manual')}><Trash2 size={14} /></button>
                         </div>
                       ))
                     )}
                   </div>
                 </div>
                 <div>
-                  <h4 style={{ marginBottom: '1rem' }}>Hojas Técnicas</h4>
-                  <div style={{ padding: '1rem', border: '1px dashed var(--border)', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ninguna hoja técnica adjunta</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Hojas Técnicas</h4>
+                    <button className="btn" style={{ fontSize: '0.7rem' }} onClick={() => hojaInputRef.current?.click()}>
+                      <Plus size={14} /> Subir PDF/Imagen
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={hojaInputRef} 
+                      style={{ display: 'none' }} 
+                      accept="application/pdf,image/*" 
+                      onChange={e => handleFileUpload(e, 'hoja')} 
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {book?.manualData.hojasTecnicas.length === 0 ? (
+                      <div style={{ padding: '1rem', border: '1px dashed var(--border)', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ninguna hoja técnica adjunta</div>
+                    ) : (
+                      book?.manualData.hojasTecnicas.map((h, i) => (
+                        <div key={i} className="card shadow-sm" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 1rem' }}>
+                          <div 
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                            onClick={() => {
+                              const win = window.open();
+                              win?.document.write(`<iframe src="${h.url}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                            }}
+                          >
+                            <FileIcon size={16} color="var(--accent)" /> {h.nombre}
+                          </div>
+                          <button className="btn text-error" onClick={() => removeFile(i, 'hoja')}><Trash2 size={14} /></button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
