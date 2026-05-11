@@ -522,3 +522,4 @@ export class MantProDB extends Dexie {
 }
 
 export const db = new MantProDB();
+(window as any).db = db;

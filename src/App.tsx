@@ -43,7 +43,6 @@ import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
 import TelegramInbox from './components/TelegramInbox';
 
 function App() {
-  console.log("Renderizando App...");
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showInventorySummary, setShowInventorySummary] = useState(false);
@@ -234,11 +233,15 @@ function App() {
         
         
         {activeTab === 'dashboard' && (
-          <div style={{ padding: '2rem' }}>
-            <h2>Panel de control (Modo Recuperación)</h2>
-            <p>Si ves este mensaje, la aplicación está funcionando. Estamos restaurando los datos del dashboard...</p>
-            <button onClick={() => setActiveTab('compras')} className="btn btn-primary">Ir a Compras</button>
-          </div>
+          <DashboardView 
+            onShowSummary={() => setShowInventorySummary(true)} 
+            onNavigate={(tab) => setActiveTab(tab)}
+            onViewOrders={(orderId?: number) => {
+              setSparesView('orders');
+              setSparesOrderId(orderId || null);
+              setActiveTab('compras');
+            }}
+          />
         )}
 
       </main>
@@ -256,25 +259,55 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
   onNavigate: (tab: string) => void,
   onViewOrders: (orderId?: number) => void
 }) {
-  const pendingOrders = useLiveQuery(() => db.orders ? db.orders.where('estado').equals('pendiente').count() : 0) || 0;
-  const activeProjects = useLiveQuery(() => db.projects ? db.projects.where('estado').notEqual('terminado').count() : 0) || 0;
+  const pendingOrders = useLiveQuery(async () => {
+    try {
+      if (!db.orders) return 0;
+      return await db.orders.where('estado').equals('pendiente').count();
+    } catch (e) {
+      console.error("Error en pendingOrders:", e);
+      return 0;
+    }
+  }) || 0;
+  const activeProjects = useLiveQuery(async () => {
+    try {
+      if (!db.projects) return 0;
+      return await db.projects.where('estado').notEqual('terminado').count();
+    } catch (e) {
+      console.error("Error en activeProjects:", e);
+      return 0;
+    }
+  }) || 0;
   
-  const criticalInspections = useLiveQuery(() => db.regulatoryInspections ? db.regulatoryInspections.toArray().then(inspections => 
-    inspections.filter(i => {
-      const days = Math.ceil((new Date(i.fechaProx).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-      return days < 0;
-    }).length
-  ) : 0) || 0;
+  const criticalInspections = useLiveQuery(async () => {
+    try {
+      if (!db.regulatoryInspections) return 0;
+      const inspections = await db.regulatoryInspections.toArray();
+      return inspections.filter(i => {
+        const days = Math.ceil((new Date(i.fechaProx).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return days < 0;
+      }).length;
+    } catch (e) {
+      console.error("Error en criticalInspections:", e);
+      return 0;
+    }
+  }) || 0;
 
-  const fleetAlerts = useLiveQuery(() => db.vehicles ? db.vehicles.toArray().then(vehicles => 
-    vehicles.filter(v => {
-      if (!v.proximaRevision) return false;
-      const revisionDate = new Date(v.proximaRevision);
-      const today = new Date();
-      const diffInDays = (revisionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-      return diffInDays <= 15;
-    }).length
-  ) : 0) || 0;
+  const fleetAlerts = useLiveQuery(async () => {
+    try {
+      if (!db.vehicles) return 0;
+      const vehicles = await db.vehicles.toArray();
+      return vehicles.filter(v => {
+        if (!v.proximaRevision) return false;
+        const revisionDate = new Date(v.proximaRevision);
+        const today = new Date();
+        const diffInDays = (revisionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+        return diffInDays <= 15;
+      }).length;
+    } catch (e) {
+      console.error("Error en fleetAlerts:", e);
+      return 0;
+    }
+  }) || 0;
 
   const orders = useLiveQuery(() => db.orders ? db.orders.orderBy('id').reverse().limit(5).toArray() : []) || [];
   const suppliers = useLiveQuery(() => db.suppliers ? db.suppliers.toArray() : []) || [];
