@@ -493,6 +493,32 @@ export class MantProDB extends Dexie {
     });
 
     this.version(18).stores({
+      employees: '++id, dni, nombre',
+      suppliers: '++id, nombre',
+      orders: '++id, numeroPedido, idProveedor, estado, anio',
+      projects: '++id, nombreObra, idEdificio, estado',
+      assets: '++id, nombre, idEdificio',
+      buildings: '++id, nombre',
+      vehicles: '++id, matricula',
+      holidays: '++id, fecha',
+      settings: '++id',
+      clothingCatalog: '++id, nombre',
+      clothingBatches: '++id, anio, operarioId',
+      inventoryItems: '++id, idEquipo, edificio, tipoInstalacion, estado, sustituyeA, sustituidoPor',
+      maintenanceBooks: '++id, idEquipo',
+      maintenanceBookSyncLogs: '++id, maintenanceBookId',
+      inventoryAuditLogs: '++id, fecha, accion, itemSelector',
+      inventoryImports: '++id, fecha',
+      workOrders: '++id, numeroParte, *operatorIds, idVehiculo, estado, fecha, *linkedOrderItemIds',
+      workOrderMaterials: '++id, workOrderId',
+      regulatoryInspections: '++id, edificio, instalacion, fechaProx',
+      inspectorCompanies: '++id, nombre',
+      prorrateo: '++id, anio, servicio, empresa',
+      guardiaWeeks: '++id, [anio+semana], anio, semana, operarioNombre, fechaInicio',
+      vacationEntries: '++id, operarioNombre, anio, fecha',
+      vacationBalances: '++id, operarioNombre, anio',
+      quotations: '++id, idProveedor, estado',
+      orderItems: '++id, idPedido, idEdificio, idObra, estado',
       telegramInbox: '++id, updateId, processed, type'
     });
   }
