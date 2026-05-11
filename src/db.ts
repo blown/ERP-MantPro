@@ -191,6 +191,18 @@ export interface Settings {
   incendiosLink?: string;
   telegramToken?: string;
   telegramChatId?: string;
+  lastTelegramUpdateId?: number;
+}
+
+export interface TelegramInboxMessage {
+  id?: number;
+  updateId: number;
+  fromName: string;
+  date: number;
+  text: string;
+  processed: boolean;
+  type: 'inventory' | 'purchase' | 'workOrder' | 'unknown';
+  parsedData?: any;
 }
 
 export interface ClothingItem {
@@ -393,6 +405,7 @@ export class MantProDB extends Dexie {
   guardiaWeeks!: Table<GuardiaWeek>;
   vacationEntries!: Table<VacationEntry>;
   vacationBalances!: Table<VacationBalance>;
+  telegramInbox!: Table<TelegramInboxMessage>;
 
   constructor() {
     super('MantProDB');
@@ -477,6 +490,10 @@ export class MantProDB extends Dexie {
 
     this.version(17).stores({
       orderItems: '++id, idPedido, idEdificio, idObra, estado'
+    });
+
+    this.version(18).stores({
+      telegramInbox: '++id, updateId, processed, type'
     });
   }
 }

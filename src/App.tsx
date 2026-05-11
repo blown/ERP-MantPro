@@ -40,6 +40,7 @@ import AnnualTasksPage from './pages/AnnualTasks';
 import CalendarView from './pages/Calendar';
 import WorkOrdersPage from './pages/WorkOrders';
 import RegulatoryInspectionsPage from './pages/RegulatoryInspections';
+import TelegramInbox from './components/TelegramInbox';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -48,6 +49,8 @@ function App() {
   const [sparesView, setSparesView] = useState<'orders' | 'quotations' | 'analytics' | 'suppliers'>('quotations');
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
+  const [showTelegramInbox, setShowTelegramInbox] = useState(false);
+  const pendingTelegramCount = useLiveQuery(() => db.telegramInbox?.where('processed').equals(0).count()) || 0;
   const settingsData = useLiveQuery(() => db.settings.toCollection().first());
   const companyInfo = {
     nombre: settingsData?.nombreEmpresa || 'MantPro ERP',
@@ -135,9 +138,27 @@ function App() {
           ))}
         </nav>
 
-        <div style={{ marginTop: 'auto', padding: '1rem', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Empresa Actual</div>
-          <div style={{ fontWeight: 600 }}>{companyInfo.nombre}</div>
+        <div style={{ marginTop: 'auto', padding: '1rem', background: 'var(--bg)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <button 
+            className="nav-item" 
+            style={{ width: '100%', justifyContent: 'space-between', background: pendingTelegramCount > 0 ? 'rgba(0, 136, 204, 0.1)' : 'transparent' }}
+            onClick={() => setShowTelegramInbox(true)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              <Bell size={20} color={pendingTelegramCount > 0 ? '#0088cc' : 'currentColor'} />
+              <span>Buzón Telegram</span>
+            </div>
+            {pendingTelegramCount > 0 && (
+              <span style={{ background: '#0088cc', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>
+                {pendingTelegramCount}
+              </span>
+            )}
+          </button>
+          
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Empresa Actual</div>
+            <div style={{ fontWeight: 600 }}>{companyInfo.nombre}</div>
+          </div>
         </div>
       </aside>
 
@@ -191,6 +212,9 @@ function App() {
         { activeTab === 'tareas_anuales' && <AnnualTasksPage />}
         { activeTab === 'calendario' && <CalendarView />}
         { activeTab === 'inspecciones_oca' && <RegulatoryInspectionsPage />}
+        { activeTab === 'configuracion' && <SettingsPage />}
+        
+        {showTelegramInbox && <TelegramInbox onClose={() => setShowTelegramInbox(false)} />}
         
         {activeTab === 'dashboard' && (
           <DashboardView 
