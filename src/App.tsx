@@ -51,8 +51,25 @@ function App() {
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
   const [showTelegramInbox, setShowTelegramInbox] = useState(false);
-  const pendingTelegramCount = useLiveQuery(() => db.telegramInbox ? db.telegramInbox.where('processed').equals(false).count() : 0) || 0;
-  const settingsData = useLiveQuery(() => db.settings ? db.settings.toCollection().first() : null);
+  const pendingTelegramCount = useLiveQuery(async () => {
+    try {
+      if (!db.telegramInbox) return 0;
+      const all = await db.telegramInbox.toArray();
+      return all.filter(m => !m.processed).length;
+    } catch (e) {
+      console.error("Error en pendingTelegramCount:", e);
+      return 0;
+    }
+  }) || 0;
+  const settingsData = useLiveQuery(async () => {
+    try {
+      if (!db.settings) return null;
+      return await db.settings.toCollection().first();
+    } catch (e) {
+      console.error("Error en settingsData:", e);
+      return null;
+    }
+  });
   const companyInfo = {
     nombre: settingsData?.nombreEmpresa || 'MantPro ERP',
     logo: settingsData?.logoEmpresa || ''

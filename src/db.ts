@@ -489,7 +489,7 @@ export class MantProDB extends Dexie {
     });
 
     // Final consolidated version to ensure stability and recover from corrupted states
-    this.version(20).stores({
+    this.version(100).stores({
       employees: '++id, dni, nombre',
       suppliers: '++id, nombre',
       orders: '++id, numeroPedido, idProveedor, estado, anio',
