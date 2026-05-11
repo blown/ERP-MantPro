@@ -472,6 +472,10 @@ export class MantProDB extends Dexie {
         }
       });
     });
+
+    this.version(17).stores({
+      orderItems: '++id, idPedido, idEdificio, idObra, estado'
+    });
   }
 }
 

@@ -28,6 +28,7 @@ function RepuestosView({ book, onUpdate }: { book: MaintenanceBook, onUpdate: (b
   const [showPicker, setShowPicker] = useState(false);
   const orders = useLiveQuery(() => db.orders.where('estado').equals('recibido').toArray()) || [];
   const suppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+  const availableItems = useLiveQuery(() => db.orderItems.where('estado').equals('recibido').toArray()) || [];
 
   const handleAddSpare = (item: any) => {
     const order = orders.find(o => o.id === item.idPedido);
@@ -160,7 +161,7 @@ function RepuestosView({ book, onUpdate }: { book: MaintenanceBook, onUpdate: (b
                   </tr>
                 </thead>
                 <tbody>
-                  {useLiveQuery(() => db.orderItems.where('estado').equals('recibido').toArray())?.map(line => {
+                  {availableItems.map(line => {
                     const order = orders.find(o => o.id === line.idPedido);
                     return (
                       <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
