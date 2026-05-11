@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, type Settings, type Building } from '../db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Save, Building2, Calculator, Plus, Trash2, MapPin, Upload, Database, Download, RefreshCcw } from 'lucide-react';
+import { Save, Building2, Calculator, Plus, Trash2, MapPin, Upload, Database, Download, RefreshCcw, Send, MessageSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function SettingsPage() {
@@ -14,7 +14,9 @@ export default function SettingsPage() {
     direccionEntrega: '',
     firmanteNombre: '',
     firmanteDni: '',
-    footerLine: ''
+    footerLine: '',
+    telegramToken: '',
+    telegramChatId: ''
   });
   const [saved, setSaved] = useState(false);
 
@@ -303,6 +305,83 @@ export default function SettingsPage() {
               placeholder="https://docs.google.com/spreadsheets/d/..."
             />
           </div>
+        </div>
+      </div>
+
+      <div className="card shadow-sm" style={{ marginBottom: '2rem', borderLeft: '4px solid #0088cc' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div style={{ padding: '0.75rem', background: '#0088cc', borderRadius: '12px', color: 'white' }}>
+            <MessageSquare size={24} />
+          </div>
+          <div>
+            <h3>Configuración Bot de Telegram</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Configura tu bot para recibir avisos y notificaciones en tu móvil.</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Bot Token (@BotFather)</label>
+            <input 
+              type="password"
+              className="card" 
+              style={{ padding: '0.75rem', border: '1px solid var(--border)' }}
+              value={settings.telegramToken || ''}
+              onChange={(e) => handleInputChange('telegramToken', e.target.value)}
+              placeholder="745638290:AAF_Lkd9..."
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 600 }}>Chat ID (Tu ID o ID de Grupo)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input 
+                className="card" 
+                style={{ padding: '0.75rem', border: '1px solid var(--border)', flex: 1 }}
+                value={settings.telegramChatId || ''}
+                onChange={(e) => handleInputChange('telegramChatId', e.target.value)}
+                placeholder="Ej: 123456789"
+              />
+              <button 
+                className="btn" 
+                title="Enviar mensaje de prueba"
+                style={{ background: 'rgba(0, 136, 204, 0.1)', color: '#0088cc' }}
+                onClick={async () => {
+                  if (!settings.telegramToken || !settings.telegramChatId) {
+                    alert('Por favor, introduce el Token y el Chat ID primero.');
+                    return;
+                  }
+                  try {
+                    const res = await fetch(`https://api.telegram.org/bot${settings.telegramToken}/sendMessage`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        chat_id: settings.telegramChatId,
+                        text: '🚀 *¡Bot de MantPro configurado correctamente!* \n\nA partir de ahora recibirás aquí las notificaciones del ERP.',
+                        parse_mode: 'Markdown'
+                      })
+                    });
+                    if (res.ok) alert('¡Mensaje de prueba enviado con éxito!');
+                    else alert('Error al enviar el mensaje. Revisa el Token y el Chat ID.');
+                  } catch (err) {
+                    alert('Error de conexión con Telegram: ' + err);
+                  }
+                }}
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg)', borderRadius: '8px', fontSize: '0.8rem' }}>
+          <h4 style={{ marginBottom: '0.5rem', color: '#0088cc' }}>¿Cómo configurar el bot?</h4>
+          <ol style={{ paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
+            <li>Busca a <b>@BotFather</b> en Telegram y crea un nuevo bot con <code>/newbot</code>.</li>
+            <li>Copia el <b>API TOKEN</b> que te dé y pégalo aquí.</li>
+            <li>Para saber tu <b>Chat ID</b>, escribe al bot <code>/start</code> y luego visita: <br/>
+                <code>https://api.telegram.org/bot[TU_TOKEN]/getUpdates</code></li>
+            <li>Busca el número después de <code>"id":</code> en la sección <code>"chat"</code>.</li>
+          </ol>
         </div>
       </div>
 

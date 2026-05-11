@@ -189,6 +189,8 @@ export interface Settings {
   guardiaLink?: string;
   vacationLink?: string;
   incendiosLink?: string;
+  telegramToken?: string;
+  telegramChatId?: string;
 }
 
 export interface ClothingItem {
