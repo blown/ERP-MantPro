@@ -1,6 +1,27 @@
 import { db } from './db';
 
 export async function initializeAppData() {
+  console.log("Iniciando diagnósticos de tablas...");
+  const tables = [
+    'employees', 'suppliers', 'orders', 'projects', 'assets', 
+    'buildings', 'vehicles', 'holidays', 'settings', 'clothingCatalog',
+    'clothingBatches', 'inventoryItems', 'maintenanceBooks', 
+    'maintenanceBookSyncLogs', 'inventoryAuditLogs', 'inventoryImports',
+    'workOrders', 'workOrderMaterials', 'regulatoryInspections', 
+    'inspectorCompanies', 'prorrateo', 'guardiaWeeks', 'vacationEntries',
+    'vacationBalances', 'quotations', 'orderItems', 'telegramInbox'
+  ];
+  
+  for (const tableName of tables) {
+    try {
+      const count = await (db as any)[tableName].count();
+      console.log(`Tabla ${tableName}: ${count} registros`);
+    } catch (e) {
+      console.error(`ERROR EN TABLA ${tableName}:`, e);
+      throw e;
+    }
+  }
+
   const settingsCount = await db.settings.count();
   
   if (settingsCount === 0) {
