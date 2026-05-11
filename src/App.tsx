@@ -228,7 +228,7 @@ function App() {
         )}
 
       </main>
-      {showTelegramInbox && <TelegramInbox onClose={() => setShowTelegramInbox(false)} />}
+      {/* {showTelegramInbox && <TelegramInbox onClose={() => setShowTelegramInbox(false)} />} */}
       {showInventorySummary && (
         <InventorySummaryModal onClose={() => setShowInventorySummary(false)} />
       )}
