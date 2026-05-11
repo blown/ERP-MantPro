@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react';
+import { db } from '../db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { ExternalLink, Link as LinkIcon, Save, Calendar, Shirt, CheckCircle, Shield, Flame } from 'lucide-react';
 
 export default function AnnualTasksPage() {
