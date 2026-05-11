@@ -335,8 +335,6 @@ export default function AnnualTasksPage() {
         </table>
       </div>
 
-      </div>
-
       <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 768px) {
           .annual-tasks-container .table-container table, 
