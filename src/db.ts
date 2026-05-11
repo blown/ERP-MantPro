@@ -213,6 +213,7 @@ export interface InventoryItem {
   numeroUnidades: number;
   tipoMedida: string;
   descripcion: string;
+  planta?: string;
   localizacion: string;
   libroMantenimientoUrl?: string; // ID of the MaintenanceBook or external URL
   estado: 'ACTIVO' | 'BAJA';
@@ -242,6 +243,7 @@ export interface MaintenanceBook {
     edificio: string;
     tipoInstalacion: string;
     descripcion: string;
+    planta?: string;
     localizacion: string;
     estado: string;
     fechaAlta?: string;

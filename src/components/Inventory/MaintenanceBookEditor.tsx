@@ -217,6 +217,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
             edificio: item.edificio,
             tipoInstalacion: item.tipoInstalacion,
             descripcion: item.descripcion,
+            planta: item.planta,
             localizacion: item.localizacion,
             estado: item.estado,
             fechaAlta: item.fechaAlta,
@@ -254,7 +255,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
     };
     
     fetchBook();
-  }, [item.idEquipo, item.edificio, item.tipoInstalacion, item.descripcion, item.localizacion, item.estado, item.fechaAlta, item.fechaBaja, item.sustituyeA, item.sustituidoPor, item.observaciones]);
+  }, [item.idEquipo, item.edificio, item.tipoInstalacion, item.descripcion, item.planta, item.localizacion, item.estado, item.fechaAlta, item.fechaBaja, item.sustituyeA, item.sustituidoPor, item.observaciones]);
 
   const handleSync = async () => {
     if (!book) return;
@@ -267,6 +268,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
         edificio: item.edificio,
         tipoInstalacion: item.tipoInstalacion,
         descripcion: item.descripcion,
+        planta: item.planta,
         localizacion: item.localizacion,
         estado: item.estado,
         fechaAlta: item.fechaAlta,
@@ -453,6 +455,10 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
                 <div class="field-value">${book.syncData.tipoInstalacion}</div>
               </div>
               <div class="field">
+                <div class="field-label">Planta</div>
+                <div class="field-value">${book.syncData.planta || '---'}</div>
+              </div>
+              <div class="field">
                 <div class="field-label">Localización Exacta</div>
                 <div class="field-value">${book.syncData.localizacion}</div>
               </div>
@@ -619,6 +625,7 @@ export default function MaintenanceBookEditor({ item, onClose }: Props) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.8rem', fontSize: '0.85rem' }}>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Edificio:</strong> {book?.syncData.edificio}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Tipo Instalación:</strong> {book?.syncData.tipoInstalacion}</div>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Planta:</strong> {book?.syncData.planta || '---'}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Descripción:</strong> {book?.syncData.descripcion}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Localización:</strong> {book?.syncData.localizacion}</div>
                   <div><strong style={{ color: 'var(--text-muted)' }}>Estado:</strong> <span className={`status-badge status-${book?.syncData.estado.toLowerCase()}`}>{book?.syncData.estado}</span></div>

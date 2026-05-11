@@ -92,6 +92,7 @@ export default function InventoryTable({ onImport, onCreateWorkOrder }: Props) {
       'EDIFICIO': item.edificio,
       'INSTALACIÓN': item.tipoInstalacion,
       'DESCRIPCIÓN': item.descripcion,
+      'PLANTA': item.planta || '',
       'LOCALIZACIÓN': item.localizacion,
       'UDS': item.numeroUnidades,
       'MEDIDA': item.tipoMedida,
@@ -172,6 +173,7 @@ export default function InventoryTable({ onImport, onCreateWorkOrder }: Props) {
                 <th style={{ padding: '1rem' }}>ID EQUIPO</th>
                 <th style={{ padding: '1rem' }}>ESTADO</th>
                 <th style={{ padding: '1rem' }}>EDIFICIO</th>
+                <th style={{ padding: '1rem' }}>PLANTA</th>
                 <th style={{ padding: '1rem', width: '30%' }}>DESCRIPCIÓN</th>
                 <th style={{ padding: '1rem' }}>UDS</th>
                 <th style={{ padding: '1rem' }}>LIBRO</th>
@@ -188,6 +190,7 @@ export default function InventoryTable({ onImport, onCreateWorkOrder }: Props) {
                     </span>
                   </td>
                   <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{item.edificio}</td>
+                  <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: 600 }}>{item.planta || '---'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{item.descripcion}</td>
                   <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{item.numeroUnidades} {item.tipoMedida}</td>
                   <td style={{ padding: '1rem' }}>
@@ -268,7 +271,7 @@ export default function InventoryTable({ onImport, onCreateWorkOrder }: Props) {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     No se encontraron equipos con los filtros actuales.
                   </td>
                 </tr>
