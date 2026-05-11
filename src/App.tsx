@@ -50,7 +50,7 @@ function App() {
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
   const [showTelegramInbox, setShowTelegramInbox] = useState(false);
-  const pendingTelegramCount = useLiveQuery(() => db.telegramInbox?.where('processed').equals(0).count()) || 0;
+  const pendingTelegramCount = useLiveQuery(() => db.telegramInbox?.where('processed').equals(false).count()) || 0;
   const settingsData = useLiveQuery(() => db.settings.toCollection().first());
   const companyInfo = {
     nombre: settingsData?.nombreEmpresa || 'MantPro ERP',
