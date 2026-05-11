@@ -51,7 +51,7 @@ function App() {
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
   const [showTelegramInbox, setShowTelegramInbox] = useState(false);
   const pendingTelegramCount = useLiveQuery(() => db.telegramInbox ? db.telegramInbox.where('processed').equals(false).count() : 0) || 0;
-  const settingsData = useLiveQuery(() => db.settings.toCollection().first());
+  const settingsData = useLiveQuery(() => db.settings ? db.settings.toCollection().first() : null);
   const companyInfo = {
     nombre: settingsData?.nombreEmpresa || 'MantPro ERP',
     logo: settingsData?.logoEmpresa || ''
@@ -242,29 +242,30 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
   onNavigate: (tab: string) => void,
   onViewOrders: (orderId?: number) => void
 }) {
-  const pendingOrders = useLiveQuery(() => db.orders.where('estado').equals('pendiente').count()) || 0;
-  const activeProjects = useLiveQuery(() => db.projects.where('estado').notEqual('terminado').count()) || 0;
-  const criticalInspections = useLiveQuery(() => db.regulatoryInspections.toArray().then(inspections => 
+  const pendingOrders = useLiveQuery(() => db.orders ? db.orders.where('estado').equals('pendiente').count() : 0) || 0;
+  const activeProjects = useLiveQuery(() => db.projects ? db.projects.where('estado').notEqual('terminado').count() : 0) || 0;
+  
+  const criticalInspections = useLiveQuery(() => db.regulatoryInspections ? db.regulatoryInspections.toArray().then(inspections => 
     inspections.filter(i => {
       const days = Math.ceil((new Date(i.fechaProx).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       return days < 0;
     }).length
-  )) || 0;
+  ) : 0) || 0;
 
-  const fleetAlerts = useLiveQuery(() => db.vehicles.toArray().then(vehicles => 
+  const fleetAlerts = useLiveQuery(() => db.vehicles ? db.vehicles.toArray().then(vehicles => 
     vehicles.filter(v => {
       if (!v.proximaRevision) return false;
       const revisionDate = new Date(v.proximaRevision);
       const today = new Date();
       const diffInDays = (revisionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-      return diffInDays <= 15; // Warn if revision is in less than 15 days or overdue
+      return diffInDays <= 15;
     }).length
-  )) || 0;
+  ) : 0) || 0;
 
-  const orders = useLiveQuery(() => db.orders.orderBy('id').reverse().limit(5).toArray()) || [];
-  const suppliers = useLiveQuery(() => db.suppliers.toArray()) || [];
+  const orders = useLiveQuery(() => db.orders ? db.orders.orderBy('id').reverse().limit(5).toArray() : []) || [];
+  const suppliers = useLiveQuery(() => db.suppliers ? db.suppliers.toArray() : []) || [];
   
-  const settings = useLiveQuery(() => db.settings.toCollection().first());
+  const settings = useLiveQuery(() => db.settings ? db.settings.toCollection().first() : null);
   const todayStr = new Date().toISOString().split('T')[0];
   const isProrrateoPending = settings?.fechaNotificacionProrrateo ? todayStr >= settings.fechaNotificacionProrrateo : false;
   const isRopaPending = settings?.fechaNotificacionRopa ? todayStr >= settings.fechaNotificacionRopa : false;
@@ -274,7 +275,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
   const { year: currentYear, week: weekNo } = getISOWeek(new Date());
 
   const currentGuard = useLiveQuery(() => 
-    db.guardiaWeeks.where('[anio+semana]').equals([currentYear, weekNo]).first()
+    db.guardiaWeeks ? db.guardiaWeeks.where('[anio+semana]').equals([currentYear, weekNo]).first() : null
   );
 
   const nextGuards = useLiveQuery(async () => {
@@ -283,6 +284,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
       let w = weekNo + i;
       let y = currentYear;
       if (w > 52) { w = 1; y++; }
+      if (!db.guardiaWeeks) break;
       const g = await db.guardiaWeeks.where('[anio+semana]').equals([y, w]).first();
       if (g) guards.push(g);
     }
@@ -292,6 +294,7 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
   const nextAbsences = useLiveQuery(async () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const nextWeek = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Extiendo a 15 días para ver más periodos
+    if (!db.vacationEntries) return [];
     const entries = await db.vacationEntries
       .where('fecha').between(todayStr, nextWeek, true, true)
       .and(e => e.tipo === 'V' || e.tipo === 'C')
