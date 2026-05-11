@@ -217,15 +217,11 @@ function App() {
         
         
         {activeTab === 'dashboard' && (
-          <DashboardView 
-            onShowSummary={() => setShowInventorySummary(true)} 
-            onNavigate={(tab) => setActiveTab(tab)}
-            onViewOrders={(orderId?: number) => {
-              setSparesView('orders');
-              setSparesOrderId(orderId || null);
-              setActiveTab('compras');
-            }}
-          />
+          <div style={{ padding: '2rem' }}>
+            <h2>Panel de control (Modo Recuperación)</h2>
+            <p>Si ves este mensaje, la aplicación está funcionando. Estamos restaurando los datos del dashboard...</p>
+            <button onClick={() => setActiveTab('compras')} className="btn btn-primary">Ir a Compras</button>
+          </div>
         )}
 
       </main>
