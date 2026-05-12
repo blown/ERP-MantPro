@@ -19,87 +19,23 @@ interface Props {
 
 export default function TelegramInbox({ onClose }: Props) {
   const [syncing, setSyncing] = useState(false);
-  const messages = useLiveQuery(() => db.telegramInbox ? db.telegramInbox.where('processed').equals(false).toArray() : []) || [];
   
-  const parseMessage = (text: string): { type: TelegramInboxMessage['type'], data: any } => {
-    const t = text.trim().toUpperCase();
-    
-    if (t.startsWith('ALTA:')) {
-      const parts = text.split(':')[1].split('|').map(p => p.trim());
-      return {
-        type: 'inventory',
-        data: {
-          idEquipo: parts[0],
-          edificio: parts[1],
-          planta: parts[2],
-          descripcion: parts[3],
-          localizacion: parts[4] || ''
-        }
-      };
+  const messages = useLiveQuery(async () => {
+    try {
+      if (!db.telegramInbox) return [];
+      const all = await db.telegramInbox.toArray();
+      return all.filter(m => !m.processed);
+    } catch (err) {
+      console.error("Error cargando mensajes de Telegram:", err);
+      return [];
     }
-    
-    if (t.startsWith('COMPRA:')) {
-      const parts = text.split(':')[1].split('|').map(p => p.trim());
-      return {
-        type: 'purchase',
-        data: {
-          proveedor: parts[0],
-          importe: parseFloat(parts[1]?.replace(',', '.') || '0'),
-          concepto: parts[2]
-        }
-      };
-    }
-    
-    if (t.startsWith('PARTE:')) {
-      const parts = text.split(':')[1].split('|').map(p => p.trim());
-      return {
-        type: 'workOrder',
-        data: {
-          idEquipo: parts[0],
-          descripcion: parts[1]
-        }
-      };
-    }
-    
-    return { type: 'unknown', data: {} };
-  };
-
+  }) || [];
+  
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const settings = await db.settings.toCollection().first();
-      if (!settings?.telegramToken) {
-        alert('Configura primero el Token del Bot en Ajustes');
-        return;
-      }
-
-      const offset = settings.lastTelegramUpdateId ? settings.lastTelegramUpdateId + 1 : 0;
-      const res = await fetch(`https://api.telegram.org/bot${settings.telegramToken}/getUpdates?offset=${offset}`);
-      const data = await res.json();
-
-      if (data.ok && data.result.length > 0) {
-        let maxUpdateId = settings.lastTelegramUpdateId || 0;
-        
-        for (const update of data.result) {
-          if (update.update_id > maxUpdateId) maxUpdateId = update.update_id;
-          
-          if (update.message && update.message.text) {
-            const { type, data: parsedData } = parseMessage(update.message.text);
-            
-            await db.telegramInbox.add({
-              updateId: update.update_id,
-              fromName: update.message.from.first_name,
-              date: update.message.date * 1000,
-              text: update.message.text,
-              processed: false,
-              type,
-              parsedData
-            });
-          }
-        }
-        
-        await db.settings.update(settings.id!, { lastTelegramUpdateId: maxUpdateId });
-      }
+      const { syncTelegramUpdates } = await import('../utils/telegram');
+      await syncTelegramUpdates();
     } catch (err) {
       console.error('Error sincronizando Telegram:', err);
     } finally {
@@ -131,13 +67,18 @@ export default function TelegramInbox({ onClose }: Props) {
         });
       } else if (msg.type === 'workOrder') {
         const nextNum = (await db.workOrders.count()) + 1;
+        const year = new Date().getFullYear();
         await db.workOrders.add({
-          numeroParte: nextNum.toString(),
+          numeroParte: `P-TEL-${nextNum}-${year}`,
           operatorIds: [],
-          estado: 'pendiente',
+          estado: 'borrador',
           fecha: new Date().toISOString().split('T')[0],
-          descripcion: msg.parsedData.descripcion,
-          idEquipo: msg.parsedData.idEquipo
+          descripcionGeneral: msg.parsedData.descripcion || '',
+          assetIds: msg.parsedData.idEquipo ? [msg.parsedData.idEquipo] : [],
+          assetIdsGMAO: [],
+          linkedOrderItemIds: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
       }
       
@@ -166,8 +107,8 @@ export default function TelegramInbox({ onClose }: Props) {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: '700px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: '700px', height: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <MessageSquare size={24} className="text-accent" />
@@ -197,20 +138,20 @@ export default function TelegramInbox({ onClose }: Props) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {messages.map(msg => (
-                <div key={msg.id} className="card shadow-sm" style={{ borderLeft: `4px solid ${msg.type === 'unknown' ? 'var(--border)' : 'var(--accent)'}` }}>
+              {messages && Array.isArray(messages) && messages.map(msg => (
+                <div key={msg.id || Math.random()} className="card shadow-sm" style={{ borderLeft: `4px solid ${msg.type === 'unknown' ? 'var(--border)' : 'var(--accent)'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {getTypeIcon(msg.type)}
-                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{getTypeText(msg.type)}</span>
+                      {getTypeIcon(msg.type || 'unknown')}
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{getTypeText(msg.type || 'unknown')}</span>
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {msg.fromName} • {new Date(msg.date).toLocaleString()}
+                      {msg.fromName || 'Desconocido'} • {msg.date ? new Date(msg.date).toLocaleString() : 'Fecha desconocida'}
                     </span>
                   </div>
                   
                   <p style={{ fontSize: '0.9rem', marginBottom: '1rem', background: 'var(--bg)', padding: '0.8rem', borderRadius: '4px', fontFamily: 'monospace' }}>
-                    {msg.text}
+                    {msg.text || '(Sin contenido)'}
                   </p>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem' }}>

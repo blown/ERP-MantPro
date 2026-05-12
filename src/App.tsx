@@ -112,6 +112,22 @@ function App() {
     return () => window.removeEventListener('erp-navigate', handleNavigate);
   }, []);
 
+  useEffect(() => {
+    // Background sync for Telegram (every 30 seconds)
+    const pollTelegram = async () => {
+      try {
+        const { syncTelegramUpdates } = await import('./utils/telegram');
+        await syncTelegramUpdates();
+      } catch (err) {
+        console.error('Error polling Telegram:', err);
+      }
+    };
+
+    pollTelegram(); // Initial sync
+    const interval = setInterval(pollTelegram, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const navItems = [
     { id: 'dashboard', label: 'Panel de control', icon: LayoutDashboard },
     { id: 'personal', label: 'Personal', icon: Users },
@@ -159,7 +175,10 @@ function App() {
           <button 
             className="nav-item" 
             style={{ width: '100%', justifyContent: 'space-between', background: pendingTelegramCount > 0 ? 'rgba(0, 136, 204, 0.1)' : 'transparent' }}
-            onClick={() => setShowTelegramInbox(true)}
+            onClick={() => {
+              setShowTelegramInbox(true);
+              setSidebarOpen(false);
+            }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <Bell size={20} color={pendingTelegramCount > 0 ? '#0088cc' : 'currentColor'} />
@@ -192,9 +211,15 @@ function App() {
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
-              <Bell size={24} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} />
-              <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--error)', width: 8, height: 8, borderRadius: '50%' }}></span>
+            <div 
+              style={{ position: 'relative', cursor: 'pointer' }} 
+              onClick={() => setShowTelegramInbox(true)}
+              title="Buzón de Telegram"
+            >
+              <Bell size={24} style={{ color: pendingTelegramCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
+              {pendingTelegramCount > 0 && (
+                <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--error)', width: 8, height: 8, borderRadius: '50%' }}></span>
+              )}
             </div>
             <button className="btn btn-primary">
               <Plus size={18} />
