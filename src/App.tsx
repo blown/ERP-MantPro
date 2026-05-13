@@ -23,7 +23,10 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Bell,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert,
+  Printer,
+  FileText
 } from 'lucide-react';
 import { db } from './db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -50,6 +53,7 @@ function App() {
   const [sparesOrderId, setSparesOrderId] = useState<number | null>(null);
   const [workOrderId, setWorkOrderId] = useState<number | null>(null);
   const [showTelegramInbox, setShowTelegramInbox] = useState(false);
+  const [showSecurityNotices, setShowSecurityNotices] = useState(false);
   const pendingTelegramCount = useLiveQuery(async () => {
     try {
       if (!db.telegramInbox) return 0;
@@ -266,7 +270,12 @@ function App() {
               setSparesOrderId(orderId || null);
               setActiveTab('compras');
             }}
+            onShowSecurity={() => setShowSecurityNotices(true)}
           />
+        )}
+
+        {showSecurityNotices && (
+          <SecurityNoticesModal onClose={() => setShowSecurityNotices(false)} />
         )}
 
       </main>
@@ -279,17 +288,18 @@ function App() {
 }
 
 // Componente para el Dashboard con datos reales
-function DashboardView({ onShowSummary, onNavigate, onViewOrders }: { 
+function DashboardView({ onShowSummary, onNavigate, onViewOrders, onShowSecurity }: { 
   onShowSummary: () => void,
   onNavigate: (tab: string) => void,
-  onViewOrders: (orderId?: number) => void
+  onViewOrders: (orderId?: number) => void,
+  onShowSecurity: () => void
 }) {
-  const pendingOrders = useLiveQuery(async () => {
+  const pendingWorkOrders = useLiveQuery(async () => {
     try {
-      if (!db.orders) return 0;
-      return await db.orders.where('estado').equals('pendiente').count();
+      if (!db.workOrders) return 0;
+      return await db.workOrders.where('estado').equals('borrador').count();
     } catch (e) {
-      console.error("Error en pendingOrders:", e);
+      console.error("Error en pendingWorkOrders:", e);
       return 0;
     }
   }) || 0;
@@ -330,6 +340,16 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
       }).length;
     } catch (e) {
       console.error("Error en fleetAlerts:", e);
+      return 0;
+    }
+  }) || 0;
+
+  const activeSecurityNotices = useLiveQuery(async () => {
+    try {
+      if (!db.securityNotices) return 0;
+      return await db.securityNotices.where('estado').equals('abierto').count();
+    } catch (e) {
+      console.error("Error en activeSecurityNotices:", e);
       return 0;
     }
   }) || 0;
@@ -430,10 +450,17 @@ function DashboardView({ onShowSummary, onNavigate, onViewOrders }: {
             {currentGuard ? `Semana ${weekNo} (${formatDate(currentGuard.fechaInicio)})` : 'Importa el Excel en Personal'}
           </div>
         </div>
-        <div className="card" onClick={() => onViewOrders()} style={{ cursor: 'pointer' }}>
-          <div className="card-title">Pedidos Pendientes</div>
-          <div className="card-value">{pendingOrders}</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '0.5rem' }}>Total en curso</div>
+        <div className="card" onClick={onShowSecurity} style={{ cursor: 'pointer', background: activeSecurityNotices > 0 ? 'rgba(245, 158, 11, 0.1)' : 'var(--card-bg)', border: activeSecurityNotices > 0 ? '1px solid var(--warning)' : '1px solid var(--border)' }}>
+          <div className="card-title" style={{ color: activeSecurityNotices > 0 ? '#b45309' : 'inherit', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldAlert size={18} /> Avisos Seguridad
+          </div>
+          <div className="card-value" style={{ color: activeSecurityNotices > 0 ? 'var(--warning)' : 'inherit' }}>{activeSecurityNotices}</div>
+          <div style={{ fontSize: '0.75rem', color: activeSecurityNotices > 0 ? '#b45309' : 'var(--text-muted)', marginTop: '0.5rem' }}>Equipos averiados/bloqueados</div>
+        </div>
+        <div className="card" onClick={() => onNavigate('mantenimiento')} style={{ cursor: 'pointer' }}>
+          <div className="card-title">Partes Pendientes</div>
+          <div className="card-value">{pendingWorkOrders}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--warning)', marginTop: '0.5rem' }}>Borradores por cerrar</div>
         </div>
         <div className="card" onClick={() => onNavigate('obras')} style={{ cursor: 'pointer' }}>
           <div className="card-title">Obras Activas</div>
@@ -644,6 +671,221 @@ function InventorySummaryModal({ onClose }: { onClose: () => void }) {
 
         <div style={{ marginTop: '2rem', textAlign: 'right' }}>
           <button className="btn btn-primary" onClick={onClose}>Cerrar Resumen</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Nuevo Componente: Modal de Avisos de Seguridad ---
+function SecurityNoticesModal({ onClose }: { onClose: () => void }) {
+  const notices = useLiveQuery(() => db.securityNotices.orderBy('fecha').reverse().toArray()) || [];
+  const [filterStatus, setFilterStatus] = useState<'todos' | 'abierto' | 'cerrado'>('todos');
+  const [filterBuilding, setFilterBuilding] = useState<string>('todos');
+
+  // Obtener lista única de edificios para el filtro
+  const buildings = Array.from(new Set(notices.map(n => n.edificio).filter(Boolean))) as string[];
+
+  const filteredNotices = notices.filter(notice => {
+    const statusMatch = filterStatus === 'todos' || notice.estado === filterStatus;
+    const buildingMatch = filterBuilding === 'todos' || notice.edificio === filterBuilding;
+    return statusMatch && buildingMatch;
+  });
+  
+  const handleCloseNotice = async (id: number) => {
+    if (confirm('¿Deseas cerrar este aviso de seguridad?')) {
+      await db.securityNotices.update(id, {
+        estado: 'cerrado',
+        fechaCierre: new Date().toISOString()
+      });
+    }
+  };
+
+  const handleExportPDF = (notice: any) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Aviso de Seguridad - ${notice.equipo}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
+            .header { border-bottom: 2px solid #f59e0b; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+            .title { color: #f59e0b; font-size: 24px; font-weight: 800; margin: 0; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .label { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+            .value { font-size: 14px; font-weight: 600; margin-top: 4px; }
+            .desc-box { background: #fffbeb; border: 1px solid #fef3c7; padding: 20px; border-radius: 8px; margin-top: 20px; min-height: 150px; }
+            .footer { margin-top: 50px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="title">AVISO DE SEGURIDAD</h1>
+            <div style="text-align: right">
+               <div class="label">Fecha Emisión</div>
+               <div class="value">${new Date(notice.fecha).toLocaleString()}</div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div>
+              <div class="label">Edificio / Ubicación</div>
+              <div class="value">${notice.edificio}</div>
+            </div>
+            <div>
+              <div class="label">Equipo / Activo</div>
+              <div class="value">${notice.equipo}</div>
+            </div>
+            <div>
+              <div class="label">Estado</div>
+              <div class="value" style="color: ${notice.estado === 'abierto' ? '#b45309' : '#166534'}">${notice.estado.toUpperCase()}</div>
+            </div>
+            <div>
+              <div class="label">ID Parte Trabajo</div>
+              <div class="value">#${notice.workOrderId || 'N/A'}</div>
+            </div>
+          </div>
+
+          <div class="label">Descripción detallada del aviso</div>
+          <div class="desc-box">
+            ${notice.descripcion}
+          </div>
+
+          <div class="footer">
+            Documento generado por MantPro ERP - Servicio de Mantenimiento Técnico
+          </div>
+        </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 500);
+      }, 500);
+    };
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div style={{ padding: '0.6rem', background: 'var(--warning)', borderRadius: '10px', color: 'white' }}>
+              <ShieldAlert size={24} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0 }}>Avisos para Seguridad</h2>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Control de equipos averiados y avisos activos.</p>
+            </div>
+          </div>
+          <button className="btn" onClick={onClose}><X size={24} /></button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Filtrar por Estado</label>
+            <select 
+              value={filterStatus} 
+              onChange={(e: any) => setFilterStatus(e.target.value)}
+              style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text)' }}
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="abierto">Abiertos</option>
+              <option value="cerrado">Cerrados</option>
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Filtrar por Edificio</label>
+            <select 
+              value={filterBuilding} 
+              onChange={(e: any) => setFilterBuilding(e.target.value)}
+              style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text)' }}
+            >
+              <option value="todos">Todos los edificios</option>
+              {buildings.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Edificio</th>
+                <th>Equipo</th>
+                <th>Descripción / Aviso</th>
+                <th>Estado</th>
+                <th style={{ textAlign: 'right' }}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNotices.map(notice => (
+                <tr key={notice.id} style={{ opacity: notice.estado === 'cerrado' ? 0.6 : 1 }}>
+                  <td style={{ fontSize: '0.8rem' }}>{new Date(notice.fecha).toLocaleDateString()}</td>
+                  <td style={{ fontWeight: 600 }}>{notice.edificio}</td>
+                  <td style={{ color: 'var(--accent)', fontWeight: 600 }}>{notice.equipo}</td>
+                  <td style={{ fontSize: '0.85rem' }}>{notice.descripcion}</td>
+                  <td>
+                    <span className={`status-badge ${notice.estado === 'abierto' ? 'status-pendiente' : 'status-recibido'}`} style={{ background: notice.estado === 'abierto' ? 'var(--warning)' : 'var(--success)', color: 'white' }}>
+                      {notice.estado.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '0.4rem', background: 'var(--bg)', border: '1px solid var(--border)' }} 
+                        onClick={() => handleExportPDF(notice)}
+                        title="Exportar PDF"
+                      >
+                        <Printer size={16} />
+                      </button>
+                      {notice.estado === 'abierto' ? (
+                        <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => handleCloseNotice(notice.id!)}>
+                          Cerrar Aviso
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cerrado: {new Date(notice.fechaCierre!).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {notices.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                    No hay avisos de seguridad registrados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ marginTop: '2rem', textAlign: 'right' }}>
+          <button className="btn btn-primary" onClick={onClose}>Cerrar Ventana</button>
         </div>
       </div>
     </div>

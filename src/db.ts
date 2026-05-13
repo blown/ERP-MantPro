@@ -378,6 +378,17 @@ export interface ProrrateoItem {
   valoresMensuales: number[]; // Array of 12 numbers (Jan-Dec)
 }
 
+export interface SecurityNotice {
+  id?: number;
+  workOrderId?: number;
+  descripcion: string;
+  equipo?: string;
+  edificio?: string;
+  fecha: string;
+  estado: 'abierto' | 'cerrado';
+  fechaCierre?: string;
+}
+
 export class MantProDB extends Dexie {
   employees!: Table<Employee>;
   suppliers!: Table<Supplier>;
@@ -406,6 +417,7 @@ export class MantProDB extends Dexie {
   vacationEntries!: Table<VacationEntry>;
   vacationBalances!: Table<VacationBalance>;
   telegramInbox!: Table<TelegramInboxMessage>;
+  securityNotices!: Table<SecurityNotice>;
 
   constructor() {
     super('MantProDB');
@@ -516,7 +528,8 @@ export class MantProDB extends Dexie {
       vacationBalances: '++id, operarioNombre, anio',
       quotations: '++id, idProveedor, estado',
       orderItems: '++id, idPedido, idEdificio, idObra, estado',
-      telegramInbox: '++id, updateId, processed, type'
+      telegramInbox: '++id, updateId, processed, type',
+      securityNotices: '++id, workOrderId, estado, fecha'
     });
   }
 }

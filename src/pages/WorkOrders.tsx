@@ -15,7 +15,8 @@ import {
   Trash2,
   Printer,
   FileSpreadsheet,
-  CheckSquare
+  CheckSquare,
+  ShieldAlert
 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 
@@ -298,6 +299,37 @@ function WorkOrderEditor({ order, onClose, initialAssetId }: { order: WorkOrder 
            supplier?.nombre.toLowerCase().includes(searchLower);
   });
 
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [securityNoticeDesc, setSecurityNoticeDesc] = useState(formData.descripcionGeneral || '');
+
+  const handleCreateSecurityNotice = async () => {
+    if (!securityNoticeDesc.trim()) {
+      alert('Por favor, introduce una descripción para el aviso de seguridad.');
+      return;
+    }
+
+    const firstAssetId = formData.assetIds?.[0];
+    const asset = inventory.find(i => i.idEquipo === firstAssetId);
+
+    const notice = {
+      workOrderId: formData.id,
+      descripcion: securityNoticeDesc,
+      equipo: firstAssetId || 'Múltiples/Varios',
+      edificio: asset?.edificio || '---',
+      fecha: new Date().toISOString(),
+      estado: 'abierto' as const
+    };
+
+    try {
+      await db.securityNotices.add(notice);
+      alert('Aviso de seguridad creado correctamente.');
+      setShowSecurityModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Error al crear el aviso de seguridad.');
+    }
+  };
+
 
   const handleSave = async (cerrar: boolean = false) => {
     const finalData = {
@@ -350,11 +382,24 @@ function WorkOrderEditor({ order, onClose, initialAssetId }: { order: WorkOrder 
                     };
                 });
 
+                const existingLogs = book.manualData.registrosPreventivos || [];
+                const updatedLogs = [
+                    ...existingLogs.filter((log: any) => log.parteNo !== finalData.numeroParte),
+                    newLog
+                ];
+
+                const existingSpares = book.manualData.repuestos || [];
+                // Filtrar por número de parte para evitar duplicados si se vuelve a sincronizar
+                const updatedSpares = [
+                    ...existingSpares.filter((s: any) => s.workOrderNo !== finalData.numeroParte),
+                    ...newSpares
+                ];
+
                 await db.maintenanceBooks.update(book.id!, {
                     manualData: {
                         ...book.manualData,
-                        registrosPreventivos: [...book.manualData.registrosPreventivos, newLog],
-                        repuestos: [...(book.manualData.repuestos || []), ...newSpares]
+                        registrosPreventivos: updatedLogs,
+                        repuestos: updatedSpares
                     }
                 });
             }
@@ -624,8 +669,9 @@ function WorkOrderEditor({ order, onClose, initialAssetId }: { order: WorkOrder 
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: '900px', height: '90vh', display: 'flex', flexDirection: 'column' }}>
+    <>
+      <div className="modal-overlay">
+        <div className="modal" style={{ maxWidth: '900px', height: '90vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
           <div>
             <h2 style={{ margin: 0 }}>{order ? 'Editar Parte de Trabajo' : 'Nuevo Parte de Trabajo'}</h2>
@@ -874,6 +920,9 @@ function WorkOrderEditor({ order, onClose, initialAssetId }: { order: WorkOrder 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <button className="btn text-error" onClick={onClose}>Cancelar</button>
           <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn" onClick={() => { setSecurityNoticeDesc(formData.descripcionGeneral || ''); setShowSecurityModal(true); }} style={{ background: 'var(--warning)', color: '#92400e' }}>
+                <ShieldAlert size={18} /> Aviso Seguridad
+            </button>
             <button className="btn" onClick={handleExportPDF} style={{ background: 'var(--bg)' }}>
                 <Printer size={18} /> Exportar a PDF
             </button>
@@ -885,14 +934,45 @@ function WorkOrderEditor({ order, onClose, initialAssetId }: { order: WorkOrder 
             </button>
           </div>
         </div>
-      </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem; }
-        .form-control { width: 100%; padding: 0.6rem; border: 1px solid var(--border); borderRadius: 8px; background: var(--white); font-family: inherit; }
-        .text-error { color: var(--error) !important; }
-      `}} />
+        {showSecurityModal && (
+            <div className="modal-overlay" style={{ zIndex: 2000 }}>
+                <div className="modal" style={{ maxWidth: '500px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <ShieldAlert size={20} color="var(--warning)" /> Crear Aviso de Seguridad
+                        </h3>
+                        <button className="btn" onClick={() => setShowSecurityModal(false)}><X size={20} /></button>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                        Se creará un aviso para el servicio de seguridad informando de la avería/estado del equipo.
+                    </p>
+                    <div className="form-group">
+                        <label>Descripción para Seguridad</label>
+                        <textarea 
+                            className="form-control" 
+                            style={{ height: '120px' }}
+                            value={securityNoticeDesc}
+                            onChange={e => setSecurityNoticeDesc(e.target.value)}
+                            placeholder="Ej: Ascensor Edificio A averiado. No utilizar hasta nuevo aviso."
+                        />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                        <button className="btn" onClick={() => setShowSecurityModal(false)}>Cancelar</button>
+                        <button className="btn btn-primary" onClick={handleCreateSecurityNotice}>Confirmar y Enviar</button>
+                    </div>
+                </div>
+            </div>
+        )}
+      </div>
     </div>
+
+    <style dangerouslySetInnerHTML={{ __html: `
+      .form-group { margin-bottom: 1rem; }
+      .form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem; }
+      .form-control { width: 100%; padding: 0.6rem; border: 1px solid var(--border); borderRadius: 8px; background: var(--white); font-family: inherit; }
+      .text-error { color: var(--error) !important; }
+    `}} />
+  </>
   );
 }
